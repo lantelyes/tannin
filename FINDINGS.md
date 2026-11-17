@@ -112,7 +112,20 @@ Machine: M2 Max, 32 GB, macOS 27.2.1, Rosetta 2 installed.
 Not verified: Steam overlay, achievements and cloud saves (the bridge's job); ray tracing and DLSS options in
 the game; whether Mono's download can be avoided or pre-seeded.
 
-Not done yet: the undo path (`tannin steam disable`).
+## 2026-11-17: undo and redo
+
+- **`tannin steam disable --yes`** downloaded Valve's `appdmg_osx.zip` (pinned hash matched), checked the Steam.app
+  inside it (`TeamIdentifier=MXGJJ98X76`, `Identifier=com.valvesoftware.steam`, `codesign --verify --strict` passes)
+  and swapped it in. The modified bundle was kept at
+  `~/Library/Application Support/Tannin/Backups/Steam.app.replaced-2026-11-17T164621Z`. The update freeze was removed.
+- Afterwards: Valve-signed, hardened runtime flag back (`flags=0x10000(runtime)`), no `notproton.dylib`,
+  `LSEnvironment` back to just `LC_ALL`. Game files and the game's prefix were untouched.
+- **Stock Steam started normally**: no new lines in the add-on's log, bootstrapper reports "No update necessary:
+  current version 6.1, package version 6.1".
+- **`tannin steam enable --yes` again**, freeze on, Steam restarted: 18/18 signatures resolved, 13/13 hooks installed,
+  as before.
+
+The mechanism milestones (M1 to M7) are all met. Current state: Steam Play on, updates frozen.
 
 ## Bridgeplay baseline
 
