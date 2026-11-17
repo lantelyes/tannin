@@ -1,0 +1,16 @@
+# Where these files come from
+
+Copied unchanged from NotProton (https://github.com/NotProtonNot/NotProton), directory `ntdll-patch/`,
+tag `v1.2.6` (commit `e380d11a774bcabb70cc99d4f2dc30882f7eadab`), fetched 2026-11-17.
+
+Licence: GPL-3.0, same as NotProton. Copyright remains with the NotProton authors.
+
+Files: `apply.py`, `build-ntdll.sh`, `build.sh`, `build32.sh`, `build64.sh`, `detour.c`, `detour32.c`,
+`link.ld`, `link32.ld`, `link64.ld`, `resolve.py`, `shim.S`, `shim32.S`, `shim64.S`.
+
+What they do: `resolve.py` finds the place in a Wine `ntdll.dll` where a small detour can be attached,
+`build.sh` / `build32.sh` compile that detour for the exact file, and `apply.py` writes the patched copy.
+The detour makes a game's `steamclient64.dll` hand its calls to the Steam bridge (`lsteamclient.dll`).
+
+They need `python3` with `capstone`, and Homebrew `mingw-w64`. Build outputs go next to the sources and are
+ignored by git.
