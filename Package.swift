@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "TanninCore", targets: ["TanninCore"]),
         .executable(name: "tannin", targets: ["tannin"]),
+        .executable(name: "TanninApp", targets: ["TanninApp"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.5.0"),
@@ -20,6 +21,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
+        .executableTarget(name: "TanninApp", dependencies: ["TanninCore"]),
         .testTarget(name: "TanninCoreTests", dependencies: ["TanninCore"]),
     ]
 )

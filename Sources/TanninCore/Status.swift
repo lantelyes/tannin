@@ -70,7 +70,7 @@ public struct StatusReader: Sendable {
 }
 
 /// A game installed through Steam Play, with how it is set to run.
-public struct WindowsGame: Sendable, Equatable, Identifiable {
+public struct WindowsGame: Sendable, Hashable, Identifiable {
     public let appID: String
     public let name: String
     public let launchOptions: String

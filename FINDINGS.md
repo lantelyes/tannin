@@ -154,3 +154,21 @@ The user asked whether the first-launch Mono download could be avoided. It shoul
 ## Bridgeplay baseline
 
 Not run yet. Waiting on the Game Porting Toolkit disk image and the user at the keyboard.
+
+## 2026-11-18: the app (first version)
+
+`Tannin.app` is built by `scripts/bundle.sh` from the `TanninApp` target and reads live state through `TanninCore`.
+
+- **Screens that exist and show real data from this Mac:** Overview (status sentence, This Mac, Windows games),
+  Games, per-game settings (presets, switches, "Changed" markers, launch-options preview, Save), Engine (Steam Play
+  on/off with Remove, update freeze, Wine engine, D3DMetal with Replace, Steam bridge), Logs (filter, search,
+  "Copy Details for a Bug Report"), the "Add Steam Play to Steam?" sheet, a Settings window with the menu bar
+  switch, and the menu bar item.
+- **Checked by looking at them:** the app can write images of its own screens (`TANNIN_SNAPSHOT_DIR=<folder>`),
+  which needs no screen-recording permission. Overview, game settings, Engine, Logs and the sheet were viewed in
+  light and dark; they follow the approved Cellar layout in ink and amber. The icon is the polyphenol ring.
+- **Not exercised yet from the app:** Save, Add/Remove Steam Play, the freeze switch and Replace all call the same
+  core functions the CLI used successfully, but nobody has clicked them in the app yet.
+- **Not built yet:** the first-run setup checklist with download progress (the CLI does setup today), games that
+  are not installed, the unsupported-game state, engine update checks, notifications, launch at login.
+- The game settings screen shows only D3DMetal as the graphics layer, because that is the only one wired up.
