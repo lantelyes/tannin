@@ -86,7 +86,33 @@ Machine: M2 Max, 32 GB, macOS 27.2.1, Rosetta 2 installed.
 - D3DMetal also starts without `CX_ACTIVE_GRAPHICS_BACKEND=d3dmetal` set (same smoke-test output), so a first
   game run needs no launch options.
 
-Not done yet: installing and running a game; the undo path (`tannin steam disable`).
+## 2026-11-17: first game, LEGO Builder's Journey (appid 1544360)
+
+**The user reports it "worked fully".** Installed and started from its own entry in the native Steam library.
+
+- **Install.** With the add-on active the library page offered Install. Steam downloaded the Windows build:
+  1,046,505,616 bytes downloaded, 4,322,970,119 on disk, `StateFlags 4`. No tool mapping was set by hand; the
+  add-on gives a Windows-only game the first listed tool.
+- **First Play.** The launch script built the prefix template (Wine showed its "Wine Mono Installer" download
+  dialog once; this engine does not bundle Mono), cloned the prefix, staged the bridge into
+  `pfx/drive_c/Program Files (x86)/Steam`, cloned the runner into `notproton/launchers/1544360/runner`, and started
+  `steam.exe` (the bridge's helper), which started `Builder's Journey.exe`. About two minutes from Play to the game
+  process on this first run.
+- **Running.** The game process sat near 90% CPU with about 1.3 GB resident. Its log shows
+  `overlay_shim ensure_mtl4_queue_hooks: AGXG14XFamilyCommandQueue_mtlnext` and a `WineMetalLayer` in BGRA8Unorm,
+  i.e. frames presented through Metal 4.
+- **D3DMetal was the graphics layer.** A D3DMetal shader cache appeared at
+  `$(getconf DARWIN_USER_CACHE_DIR)d3dm/Builder's Journey.exe/shaders.cache/MTLGPUFamilyApple8_0`.
+- **Exit.** `game exited status=0`, `session health: healthy`, prefix killed, no Wine processes left behind.
+  Steam recorded the session (`LastPlayed` updated).
+- **Launch options:** none were set. `WINEMSYNC=1` came from Tannin's defaults file, as the log states.
+- **Log noise that did not matter:** `winebth` driver failed to load; during template creation, two
+  `Unhandled exception c0000005` lines and `Failed to start RpcSs service`; one Apple Neural Engine message.
+
+Not verified: Steam overlay, achievements and cloud saves (the bridge's job); ray tracing and DLSS options in
+the game; whether Mono's download can be avoided or pre-seeded.
+
+Not done yet: the undo path (`tannin steam disable`).
 
 ## Bridgeplay baseline
 
