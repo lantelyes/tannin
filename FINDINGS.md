@@ -44,7 +44,27 @@ Machine: M2 Max, 32 GB, macOS 27.2.1, Rosetta 2 installed.
   `runners/crossover-<build>/CrossOver`; `WINEMSYNC` defaults to 0 unless a defaults file sets it, so Tannin writes
   `defaults-override-tannin-1-rosetta` with `WINEMSYNC=1`.
 
-Not done yet: importing the Game Porting Toolkit and linking D3DMetal, adding Steam Play to Steam, running a game.
+## 2026-11-17: D3DMetal 4.0 beta 3 on the Wine 11.19 runner (no Steam involved)
+
+- **The download.** `Game_Porting_Toolkit_4.0_beta_3.dmg` is an outer image; the evaluation environment is an inner
+  image, "Evaluation environment for Windows games 4.0 beta 3.dmg", holding `redist/lib/{external,wine}`.
+  `D3DMetal.framework` reports `CFBundleShortVersionString = 4.0b3` and passes
+  `codesign -v -R='anchor apple generic and identifier "com.apple.D3DMetal"'`.
+- **Layout.** The Unix halves in `wine/x86_64-unix` are relative symlinks to `../../external/libd3dshared.dylib`
+  (`d3d10`, `d3d11`, `d3d12`, `d3d12core`, `dxgi`, `nvapi64`, `nvngx-on-metalfx`). Apple's Read Me says to `ditto`
+  `redist/lib/` over the Wine `lib/` folder, which is what `tannin gptk import` does. Wine's own `d3d10/11/12`,
+  `d3d12core` and `dxgi` DLLs (DXMT-based in this engine) are kept in `lib/tannin-stock` so it can be undone.
+- **It runs.** `Tools/smoke/d3d12smoke.c`, a small Direct3D 12 program built with mingw, on the runner with
+  `CX_APPLEGPTK_LIBD3DSHARED_PATH` and `CX_ACTIVE_GRAPHICS_BACKEND=d3dmetal` set:
+  - `CreateDXGIFactory1` and `D3D12CreateDevice` both return 0.
+  - Adapter: "AMD Compatibility Mode" (vendor 0x1002, device 0x66af, 25559 MB), which is how D3DMetal presents itself.
+  - Maximum feature level 0xc200 (12_2).
+  - Ray tracing tier reads 0 with and without `D3DM_SUPPORT_DXR=1`. Not understood yet; to be checked in a real game.
+  - stderr carries one Apple Neural Engine "Bad argument" message; the program still exits 0.
+- **Permission.** `tannin doctor --probe-steam` reports the terminal is not yet allowed to change Steam.app
+  (App Management has not been granted). Steam.app is unchanged and still Valve-signed.
+
+Not done yet: adding Steam Play to Steam, running a game.
 
 ## Bridgeplay baseline
 

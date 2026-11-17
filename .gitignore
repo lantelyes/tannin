@@ -8,3 +8,4 @@ __pycache__/
 /Tools/ntdll-patch/*.o
 /Tools/ntdll-patch/*.elf
 /Tools/ntdll-patch/detour*.bin
+/Tools/smoke/*.exe

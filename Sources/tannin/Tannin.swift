@@ -1,4 +1,5 @@
 import ArgumentParser
+import Foundation
 import TanninCore
 
 @main
@@ -7,8 +8,56 @@ struct Tannin: ParsableCommand {
         commandName: "tannin",
         abstract: "Free Steam Play for Mac: Windows games from the native Steam client.",
         version: "0.1.0",
-        subcommands: [DoctorCommand.self, EngineCommand.self, KitCommand.self, RunnerCommand.self, SteamCommand.self, GameCommand.self]
+        subcommands: [DoctorCommand.self, EngineCommand.self, GPTKCommand.self, KitCommand.self, RunnerCommand.self, SteamCommand.self, GameCommand.self]
     )
+}
+
+struct GPTKCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "gptk",
+        abstract: "Apple's Game Porting Toolkit (D3DMetal), from your own download.",
+        subcommands: [Import.self, Link.self, Unlink.self, Status.self]
+    )
+
+    struct Import: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Import D3DMetal from Apple's disk image after checking Apple's signature, then link it into the runner.")
+
+        @Argument(help: "Apple's Game Porting Toolkit disk image, or an opened folder.")
+        var source: String
+
+        func run() throws {
+            let toolkit = try GPTK().importToolkit(from: URL(fileURLWithPath: (source as NSString).expandingTildeInPath))
+            print("Imported D3DMetal \(toolkit.version). Apple's signature verified.")
+            try D3DMetalLink().link(toolkit)
+            print("Linked into the runner.")
+        }
+    }
+
+    struct Link: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Link the newest imported D3DMetal into the runner.")
+        func run() throws {
+            let toolkit = try GPTK().current()
+            try D3DMetalLink().link(toolkit)
+            print("D3DMetal \(toolkit.version) linked into the runner.")
+        }
+    }
+
+    struct Unlink: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Take D3DMetal out of the runner and put Wine's own files back.")
+        func run() throws {
+            try D3DMetalLink().unlink()
+            print("D3DMetal removed from the runner.")
+        }
+    }
+
+    struct Status: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Show imported and linked versions.")
+        func run() throws {
+            let imported = GPTK().imported().map(\.version)
+            print("Imported: \(imported.isEmpty ? "none" : imported.joined(separator: ", "))")
+            print("Linked:   \(D3DMetalLink().linkedVersion() ?? "none")")
+        }
+    }
 }
 
 struct SteamCommand: ParsableCommand {
