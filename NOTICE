@@ -1,0 +1,28 @@
+Tannin
+Free Steam Play for Mac.
+
+Tannin is free software under the GNU General Public License, version 3 (see LICENSE).
+
+Tannin builds on the work of others. It downloads the following at install time,
+checks each against a pinned SHA-256, and redistributes none of it:
+
+- NotProton (https://github.com/NotProtonNot/NotProton), GPL-3.0.
+  The Steam add-on, the Steam bridge (a port of Valve's Proton lsteamclient, which is
+  under the Steamworks SDK license, and steam-helper, BSD-3-Clause), signatures and helpers.
+  Files under Tools/ntdll-patch/ are taken from NotProton and remain under its license.
+
+- winecx-gptk (https://github.com/frankea/winecx-gptk, from https://github.com/dappermint/winecx-gptk).
+  A build of Wine from CodeWeavers' published CrossOver sources. Wine is LGPL-2.1-or-later.
+
+- Steam client files, from Valve's own download servers. Copyright Valve Corporation.
+
+Tannin never includes Apple's Game Porting Toolkit or D3DMetal. You download the toolkit
+from Apple yourself and Tannin imports it after checking Apple's code signature.
+
+Reference material that shaped the design, with thanks:
+- Bridgeplay (https://github.com/raymondchins/Bridgeplay), GPL-3.0, for its engine documentation.
+- Unwine (https://github.com/chansekhung/unwine), GPL-3.0.
+- Kaon (https://github.com/natbro/kaon), Apache-2.0.
+
+Tannin is not affiliated with or endorsed by Valve, Apple, CodeWeavers, or any project above.
+Steam is a trademark of Valve Corporation.

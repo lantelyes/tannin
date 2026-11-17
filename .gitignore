@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+.venv/
+*.part
+.DS_Store
+/Tools/ntdll-patch/out/
