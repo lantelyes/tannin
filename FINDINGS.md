@@ -64,7 +64,29 @@ Machine: M2 Max, 32 GB, macOS 27.2.1, Rosetta 2 installed.
 - **Permission.** `tannin doctor --probe-steam` reports the terminal is not yet allowed to change Steam.app
   (App Management has not been granted). Steam.app is unchanged and still Valve-signed.
 
-Not done yet: adding Steam Play to Steam, running a game.
+## 2026-11-17: Steam Play added to Steam (build 1794536281)
+
+- **Steam update.** Started unmodified, Steam downloaded a 246 MB update and applied it on its own restart:
+  build 1788652215 to 1794536281. It switched package variant ("macos-signed-2"), leaving the old
+  `steam_client_signed_osx.manifest` behind, so the installed build is the highest version among the manifests,
+  not the one in any single file.
+- **App Management.** After the user allowed the terminal app and restarted it, `tannin doctor --probe-steam`
+  reports "Allowed".
+- **`tannin steam enable --yes` worked first time.** Afterwards Steam.app is ad-hoc signed
+  (`flags=0x2(adhoc)`, `codesign --verify --strict` passes), `notproton.dylib` is in `Contents/MacOS`, and
+  `LSEnvironment` holds the two added keys next to the original `LC_ALL`. The original Info.plist is in
+  `~/Library/Application Support/Tannin/Backups/`.
+- **The add-on loads on this Steam build.** `notproton.log`, seconds after Steam started:
+  - `sigdb: loaded 25 signatures from …/1790904859.json`
+  - `resolver: steamclient.dylib 18/18 signatures resolved, 3/3 optional`
+  - `install_thread: ready, 13/13 hooks installed`; `steamui.dylib ready, 3/3 hooks installed`
+  - `wrote 5 file(s) to …/compatibilitytools.d/notproton-tannin`, then "already registered from disk"
+  - One error line: `webui: no room left to serve NotProton.OpenPrefixLog#1`. Effect unknown so far.
+- **Update freeze** turned on afterwards (`tannin steam freeze on`).
+- D3DMetal also starts without `CX_ACTIVE_GRAPHICS_BACKEND=d3dmetal` set (same smoke-test output), so a first
+  game run needs no launch options.
+
+Not done yet: installing and running a game; the undo path (`tannin steam disable`).
 
 ## Bridgeplay baseline
 

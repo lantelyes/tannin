@@ -30,12 +30,19 @@ public struct SteamInstall: Sendable {
 
     /// The client build number Steam last updated itself to, if it has run on this Mac.
     public func clientBuild() -> String? {
-        guard let manifest = try? VDF.load(paths.steamClientManifest) else { return nil }
-        // The file has a single root object whose name varies; the version sits directly inside it.
-        for pair in manifest.pairs {
-            if let version = pair.value["version"]?.string { return version }
+        // Steam keeps one manifest per package variant ("signed", "signed-2", …) and leaves old ones behind
+        // when it switches variant, so the installed build is the highest version among them.
+        let folder = paths.steamClientManifest.deletingLastPathComponent()
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        var builds: [String] = []
+        for file in files where file.pathExtension == "manifest" && file.lastPathComponent.hasPrefix("steam_client") {
+            guard let manifest = try? VDF.load(file) else { continue }
+            // Each file has a single root object whose name varies; the version sits directly inside it.
+            for pair in manifest.pairs {
+                if let version = pair.value["version"]?.string, version.allSatisfy(\.isNumber) { builds.append(version) }
+            }
         }
-        return nil
+        return builds.max { (Int($0) ?? 0) < (Int($1) ?? 0) }
     }
 
     public func signature() -> SteamSignature {

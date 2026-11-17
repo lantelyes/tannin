@@ -68,7 +68,11 @@ import Testing
         let fm = FileManager.default
         try fm.createDirectory(at: paths.steamData.appending(path: "steamapps"), withIntermediateDirectories: true)
         try fm.createDirectory(at: paths.steamClientManifest.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try "\"osx\"\n{\n\t\"version\"\t\t\"1794536281\"\n}\n".write(to: paths.steamClientManifest, atomically: true, encoding: .utf8)
+        // An old variant's manifest left behind next to the live one, as Steam does on this Mac.
+        try "\"osx\"\n{\n\t\"version\"\t\t\"1788652215\"\n}\n".write(to: paths.steamClientManifest, atomically: true, encoding: .utf8)
+        try "\"osx\"\n{\n\t\"version\"\t\t\"1794536281\"\n}\n".write(
+            to: paths.steamClientManifest.deletingLastPathComponent().appending(path: "steam_client_signed-2_osx.manifest"),
+            atomically: true, encoding: .utf8)
         try "\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"\t\t\"\(paths.steamData.path)\"\n\t}\n}\n"
             .write(to: paths.steamLibraryFolders, atomically: true, encoding: .utf8)
         try "\"AppState\"\n{\n\t\"appid\"\t\t\"1544360\"\n\t\"name\"\t\t\"LEGO Builder's Journey\"\n\t\"installdir\"\t\t\"LEGO Builders Journey\"\n}\n"

@@ -52,14 +52,24 @@ public enum SteamConfigError: Error, CustomStringConvertible {
 /// and only written if reading the result back gives exactly the intended change and nothing else.
 public struct SteamConfig: Sendable {
     public let paths: Paths
+    /// How to tell whether Steam is running. Replaceable so tests on a fixture folder don't depend on the real Steam.
+    let steamIsRunning: @Sendable () -> Bool
 
-    public init(paths: Paths = .live) { self.paths = paths }
+    public init(paths: Paths = .live) {
+        self.paths = paths
+        self.steamIsRunning = { SteamInstall(paths: paths).isRunning() }
+    }
+
+    init(paths: Paths, steamIsRunning: @escaping @Sendable () -> Bool) {
+        self.paths = paths
+        self.steamIsRunning = steamIsRunning
+    }
 
     static let mappingPath = ["InstallConfigStore", "Software", "Valve", "Steam", "CompatToolMapping"]
 
     /// Applies `change` to a VDF file with the safety checks described above.
     func edit(_ file: URL, _ change: (inout VDFValue) -> Void) throws {
-        guard !SteamInstall(paths: paths).isRunning() else { throw SteamConfigError.steamRunning }
+        guard !steamIsRunning() else { throw SteamConfigError.steamRunning }
         let fm = FileManager.default
         let original = try VDF.load(file)
         // If our reader and writer cannot reproduce the file as it is, do not touch it.

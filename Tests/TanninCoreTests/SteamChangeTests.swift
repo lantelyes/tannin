@@ -96,7 +96,7 @@ import Testing
     @Test func compatToolIsSetAndClearedWithoutDisturbingOtherKeys() throws {
         let paths = try makeHome()
         defer { try? FileManager.default.removeItem(at: paths.home) }
-        let config = SteamConfig(paths: paths)
+        let config = SteamConfig(paths: paths, steamIsRunning: { false })
         let before = try VDF.load(paths.steamConfig)
 
         try config.setCompatTool(appID: "1544360", enabled: true)
@@ -119,7 +119,7 @@ import Testing
     @Test func launchOptionsAreWrittenForTheSignedInUser() throws {
         let paths = try makeHome()
         defer { try? FileManager.default.removeItem(at: paths.home) }
-        let config = SteamConfig(paths: paths)
+        let config = SteamConfig(paths: paths, steamIsRunning: { false })
         try config.setLaunchOptions(appID: "1544360", "D3DM_SUPPORT_DXR=1 %command%")
         #expect(config.launchOptions(appID: "1544360") == "D3DM_SUPPORT_DXR=1 %command%")
         let file = try VDF.load(paths.steamData.appending(path: "userdata/42/config/localconfig.vdf"))
@@ -154,5 +154,19 @@ import Testing
             #expect(pin.cleanSHA256.count == 64 && pin.patchedSHA256.count == 64 && pin.detourSHA256.count == 64)
             #expect(pin.cleanSHA256 != pin.patchedSHA256)
         }
+    }
+}
+
+@Suite struct SteamRunningGuardTests {
+    @Test func editsAreRefusedWhileSteamRuns() throws {
+        let home = FileManager.default.temporaryDirectory.appending(path: "tannin-guard-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let paths = Paths(home: home)
+        try FileManager.default.createDirectory(at: paths.steamConfig.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let original = "\"InstallConfigStore\"\n{\n\t\"SteamID\"\t\t\"1\"\n}\n"
+        try original.write(to: paths.steamConfig, atomically: true, encoding: .utf8)
+        let config = SteamConfig(paths: paths, steamIsRunning: { true })
+        #expect(throws: SteamConfigError.self) { try config.setCompatTool(appID: "1544360", enabled: true) }
+        #expect(try String(contentsOf: paths.steamConfig, encoding: .utf8) == original)
     }
 }
