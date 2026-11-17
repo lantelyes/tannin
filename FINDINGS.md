@@ -127,6 +127,30 @@ the game; whether Mono's download can be avoided or pre-seeded.
 
 The mechanism milestones (M1 to M7) are all met. Current state: Steam Play on, updates frozen.
 
+## 2026-11-17: the "Wine Mono Installer" dialog was Tannin's fault (32-bit ntdll detour)
+
+The user asked whether the first-launch Mono download could be avoided. It should never have appeared.
+
+- The engine already bundles Wine Mono 11.3.0 as a shared install (`share/wine/mono/wine-mono-11.3.0`, 225 MB).
+  On a fresh prefix Wine only has to install its small support package from there.
+- **Untouched engine:** fresh `wineboot --init`: no access violations, no Mono errors, no dialog.
+- **Runner with both ntdll files patched:** the same boot logs three `Unhandled exception code c0000005 … addr
+  0x7bfab4c2`, then `REMOVEUSERINSTALLS returned 1627` and `install_wine_mono MsiInstallProduct failed, err=1627`.
+  Wine then falls back to downloading the full Mono MSI, which is the dialog.
+- **Runner with only the 64-bit ntdll patched:** no access violations, no Mono errors.
+- So the **i386 detour crashes 32-bit programs on this engine.** `0x7bfab4c2 - 0x9b410` (the detour's RVA) is
+  `0x7bf100b2`: the crash is 0xb2 into the detour with 32-bit ntdll loaded at 0x7bf10000, not at the 0x7bc00000 the
+  detour's fixed addresses assume. That last step is inference from the arithmetic, not a debugger trace.
+- **Fix:** `Runner.patchedArchitectures = ["x86_64"]`. The 32-bit ntdll stays as the engine ships it and no i386
+  copy is staged, so the launch script skips its i386 comparison.
+- **Cost:** 32-bit games start, but get no Steam bridge until a relocation-safe 32-bit detour exists.
+- This also explains the two `c0000005` lines and "Failed to start RpcSs service" seen in the first game run's
+  template build. The game ran anyway because it is 64-bit.
+- The Mono MSI Wine downloaded (`~/.cache/wine/wine-mono-11.3.0-x86.msi`, sha256 `df2dfc16…18d3`) matches the hash
+  embedded in this Wine's own installer code.
+- Not yet re-tested through Steam: the next Play will rebuild the prefix template (the ntdll changed) and should
+  show no dialog.
+
 ## Bridgeplay baseline
 
 Not run yet. Waiting on the Game Porting Toolkit disk image and the user at the keyboard.

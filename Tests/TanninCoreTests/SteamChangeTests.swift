@@ -130,13 +130,41 @@ import Testing
 @Suite struct GameSettingsTests {
     @Test func rendersOnlyWhatIsSet() {
         let settings = GameSettings(rayTracing: true, frameCap: 60)
-        #expect(settings.launchOptions() == "CX_ACTIVE_GRAPHICS_BACKEND=d3dmetal D3DM_SUPPORT_DXR=1 D3DM_MAX_FPS=60 %command%")
+        #expect(settings.launchOptions() == "D3DM_SUPPORT_DXR=1 D3DM_MAX_FPS=60 %command%")
     }
 
     @Test func keepsTheUsersOwnOptionsAndReplacesTannins() {
         let existing = "D3DM_SUPPORT_DXR=0 MY_FLAG=1 %command% -windowed"
         let merged = GameSettings(rayTracing: true).launchOptions(merging: existing)
-        #expect(merged == "CX_ACTIVE_GRAPHICS_BACKEND=d3dmetal D3DM_SUPPORT_DXR=1 MY_FLAG=1 %command% -windowed")
+        #expect(merged == "D3DM_SUPPORT_DXR=1 MY_FLAG=1 %command% -windowed")
+    }
+
+    @Test func defaultsWriteNothingAndClearTanninsOwnVariables() {
+        #expect(GameSettings().launchOptions() == "")
+        #expect(GameSettings().launchOptions(merging: "D3DM_SUPPORT_DXR=1 CX_ACTIVE_GRAPHICS_BACKEND=d3dmetal %command%") == "")
+        #expect(GameSettings().launchOptions(merging: "MY_FLAG=1 %command%") == "MY_FLAG=1 %command%")
+    }
+
+    @Test func settingsSurviveBeingWrittenAndReadBack() {
+        let settings = GameSettings(rayTracing: true, metalFX: true, frameCap: 60, performanceHUD: true, metal4: false)
+        #expect(GameSettings(parsing: settings.launchOptions(merging: "MY_FLAG=1 %command%")) == settings)
+    }
+
+    @Test func presetsAreRecognisedFromSettings() {
+        #expect(GamePreset(matching: GameSettings()) == .recommended)
+        #expect(GamePreset(matching: GameSettings(rayTracing: false, metal4: true)) == .recommended)
+        #expect(GamePreset(matching: GameSettings(metalFX: true)) == .bestSpeed)
+        #expect(GamePreset(matching: GameSettings(frameCap: 30)) == .bestBattery)
+        #expect(GamePreset(matching: GameSettings(rayTracing: true)) == .custom)
+    }
+
+    @Test func logLinesAreSplitIntoTimeLevelSourceAndMessage() {
+        let lines = LogReader.parse("2026-11-17 23:47:02 [notproton] info resolver: steamclient.dylib 18/18 signatures resolved\n2026-11-17 23:47:05 [notproton] error webui: no room left\nfree text", limit: 10)
+        #expect(lines.count == 3)
+        #expect(lines[0].time == "23:47:02" && lines[0].level == .info && lines[0].source == "resolver")
+        #expect(lines[0].message == "steamclient.dylib 18/18 signatures resolved")
+        #expect(lines[1].level == .error && lines[1].source == "webui")
+        #expect(lines[2].message == "free text")
     }
 
     @Test func runnerToolsLineIsWhatTheAddonAccepts() {

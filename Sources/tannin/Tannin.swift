@@ -234,6 +234,10 @@ struct RunnerCommand: ParsableCommand {
         func run() throws {
             let patch = NtdllPatch(repository: try NtdllPatch.locateRepository())
             try Runner().build(patch: patch)
+            // A rebuild starts from a fresh copy of the engine, so put the imported D3DMetal back in.
+            if let toolkit = try? GPTK().current() {
+                try D3DMetalLink().link(toolkit)
+            }
             try Verify().run()
         }
     }

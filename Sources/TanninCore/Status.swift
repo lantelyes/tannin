@@ -1,0 +1,89 @@
+import Foundation
+
+/// Everything the app's status screens show, read in one pass. Reading it changes nothing.
+public struct TanninStatus: Sendable, Equatable {
+    public var steamInstalled: Bool
+    public var steamPlay: SteamAddon.State
+    public var steamBuild: String?
+    public var steamRunning: Bool
+    public var steamIsValveSigned: Bool
+    /// Whether the add-on reported its hooks installed the last time Steam started. Nil if it has never run.
+    public var addonLoaded: Bool?
+    public var updateFreeze: Bool
+    public var engineInstalled: Bool
+    public var engineWine: String
+    public var d3dMetalVersion: String?
+    public var bridgeVersion: String
+    /// Problems with the runner, in plain words. Empty when it is complete.
+    public var runnerProblems: [String]
+
+    public enum Headline: Sendable, Equatable {
+        case ready
+        case steamPlayOff
+        case steamUpdatedPastAddon
+        case foreignTool(String)
+        case setupIncomplete([String])
+        case steamMissing
+    }
+
+    public var headline: Headline {
+        guard steamInstalled else { return .steamMissing }
+        var missing = runnerProblems
+        if !engineInstalled { missing.insert("Wine engine is not installed", at: 0) }
+        if d3dMetalVersion == nil { missing.append("Game Porting Toolkit has not been imported") }
+        if !missing.isEmpty { return .setupIncomplete(missing) }
+        switch steamPlay {
+        case .off: return .steamPlayOff
+        case let .foreign(value): return .foreignTool(value)
+        case .on: return addonLoaded == false ? .steamUpdatedPastAddon : .ready
+        }
+    }
+}
+
+public struct StatusReader: Sendable {
+    public let paths: Paths
+
+    public init(paths: Paths = .live) { self.paths = paths }
+
+    public func read() -> TanninStatus {
+        let steam = SteamInstall(paths: paths)
+        let engine = Engine(paths: paths)
+        let runnerChecks = Runner(paths: paths).verify()
+        let problems = runnerChecks
+            .filter { $0.state == .broken && $0.name != "D3DMetal" }
+            .map { "\($0.name): \($0.detail)" }
+        return TanninStatus(
+            steamInstalled: steam.isInstalled,
+            steamPlay: SteamAddon(paths: paths).state(),
+            steamBuild: steam.clientBuild(),
+            steamRunning: steam.isRunning(),
+            steamIsValveSigned: steam.signature().isValve,
+            addonLoaded: LogReader(paths: paths).addonLoadedOnLastStart(),
+            updateFreeze: UpdateFreeze(paths: paths).isOn,
+            engineInstalled: engine.isInstalled,
+            engineWine: Pins.engineWine,
+            d3dMetalVersion: D3DMetalLink(paths: paths).linkedVersion(),
+            bridgeVersion: Pins.notProtonVersion,
+            runnerProblems: engine.isInstalled ? problems : []
+        )
+    }
+}
+
+/// A game installed through Steam Play, with how it is set to run.
+public struct WindowsGame: Sendable, Equatable, Identifiable {
+    public let appID: String
+    public let name: String
+    public let launchOptions: String
+    public var id: String { appID }
+    public var settings: GameSettings { GameSettings(parsing: launchOptions) }
+}
+
+extension SteamInstall {
+    /// Installed games that run through a compatibility tool: the ones with a Windows environment beside them.
+    public func windowsGames() -> [WindowsGame] {
+        let config = SteamConfig(paths: paths)
+        return installedApps()
+            .filter { FileManager.default.fileExists(atPath: $0.library.appending(path: "steamapps/compatdata/\($0.appID)").path) }
+            .map { WindowsGame(appID: $0.appID, name: $0.name, launchOptions: config.launchOptions(appID: $0.appID) ?? "") }
+    }
+}

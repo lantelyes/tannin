@@ -31,6 +31,15 @@ public struct Runner: Sendable {
     public var defaultsFile: URL { paths.notproton.appending(path: "defaults-override-\(Self.build)-\(Self.flavor)") }
     var stagedNtdll: URL { paths.notproton.appending(path: "bridge/wine/\(Self.build)") }
 
+    /// Which ntdll files get the Steam bridge detour.
+    ///
+    /// Only the 64-bit one. The 32-bit detour crashes 32-bit programs on this engine: it calls ntdll functions at
+    /// fixed addresses for image base 0x7bc00000, and this engine loads 32-bit ntdll elsewhere (the crash was 0xb2
+    /// into the detour with ntdll at 0x7bf10000). That broke Wine's own Mono setup step, which is a 32-bit helper,
+    /// and made Wine show its "Wine Mono Installer" download dialog. Found 2026-11-17; see FINDINGS.md.
+    /// Cost: 32-bit games start, but do not get the Steam bridge until this is solved.
+    public static let patchedArchitectures = ["x86_64"]
+
     public static var toolsLine: String { "\(toolName)\t\(build)\t\(flavor)\t\(display)" }
 
     /// Settings every game starts with unless its own launch options say otherwise.
@@ -45,7 +54,8 @@ public struct Runner: Sendable {
         guard missing.isEmpty else { throw RunnerError.kitIncomplete(missing) }
 
         // Patched ntdll first: if this fails nothing has been changed yet.
-        let patched = ["x86_64": try patch.patched(arch: "x86_64"), "i386": try patch.patched(arch: "i386")]
+        var patched: [String: URL] = [:]
+        for arch in Self.patchedArchitectures { patched[arch] = try patch.patched(arch: arch) }
 
         // A fresh APFS clone of the engine: instant, and it shares disk space with the original.
         try fm.createDirectory(at: root.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -59,10 +69,14 @@ public struct Runner: Sendable {
         }
 
         let bridge = paths.notproton.appending(path: "bridge")
+        // Start from nothing staged, so an architecture that is no longer patched leaves no stale copy behind.
+        try? fm.removeItem(at: stagedNtdll)
         for (arch, file) in patched {
             try replace(file, root.appending(path: "lib/wine/\(arch)-windows/ntdll.dll"))
             // The launch script compares the runner's ntdll with this staged copy.
             try replace(file, stagedNtdll.appending(path: "\(arch)-windows/ntdll.dll"))
+        }
+        for arch in ["x86_64", "i386"] {
             try replace(bridge.appending(path: "\(arch)-windows/lsteamclient.dll"),
                         root.appending(path: "lib/wine/\(arch)-windows/lsteamclient.dll"))
         }
@@ -105,10 +119,16 @@ public struct Runner: Sendable {
             let live = root.appending(path: "lib/wine/\(pin.arch)-windows/ntdll.dll")
             let staged = stagedNtdll.appending(path: "\(pin.arch)-windows/ntdll.dll")
             let hash = try? Hashing.sha256(of: live)
-            if hash == pin.patchedSHA256, same(live, staged) {
-                checks.append(Check("ntdll \(pin.arch)", .ok, "Patched copy in place and matches the staged copy."))
+            if Self.patchedArchitectures.contains(pin.arch) {
+                if hash == pin.patchedSHA256, same(live, staged) {
+                    checks.append(Check("ntdll \(pin.arch)", .ok, "Patched copy in place and matches the staged copy."))
+                } else {
+                    checks.append(Check("ntdll \(pin.arch)", .broken, "Not the patched copy (\(hash ?? "missing"))."))
+                }
+            } else if hash == pin.cleanSHA256, !exists(staged) {
+                checks.append(Check("ntdll \(pin.arch)", .ok, "Left as the engine ships it (not patched on this engine)."))
             } else {
-                checks.append(Check("ntdll \(pin.arch)", .broken, "Not the patched copy (\(hash ?? "missing"))."))
+                checks.append(Check("ntdll \(pin.arch)", .broken, "Should be the engine's own file (\(hash ?? "missing"))."))
             }
         }
 
