@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by scripts/release.sh. Tannin reads this to learn whether a newer version exists. -->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Tannin</title>
+    <link>https://lantelyes.github.io/tannin/</link>
+    <description>Updates for Tannin.</description>
+    <language>en</language>
+    <item>
+      <title>Tannin 0.2.0</title>
+      <pubDate>Wed, 18 Nov 2026 04:51:12 +0000</pubDate>
+      <sparkle:version>0.2.0</sparkle:version>
+      <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+      <sparkle:releaseNotesLink>https://lantelyes.github.io/tannin/notes/0.2.0.html</sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/lantelyes/tannin/releases/download/v0.2.0/Tannin-0.2.0.zip" length="2222242" type="application/octet-stream" sparkle:edSignature="uY1+EbT7n9o+B2aog+XGHG9dE3ep7M3TSwLpDgKOiuz7EhBqFsCWQQGZJeuWX6f7LuClEN7cvfaoJYSuGMsxCQ=="/>
+    </item>
+  </channel>
+</rss>
