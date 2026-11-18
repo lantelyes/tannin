@@ -151,13 +151,29 @@ struct GameCommand: ParsableCommand {
     struct List: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "List installed Steam games and which ones run with Tannin.")
 
+        @Flag(name: .long, help: "List the Windows games in the library instead, installed or not, as the app shows them.")
+        var all = false
+
         func run() throws {
-            let config = SteamConfig()
-            for app in SteamInstall().installedApps() {
-                let tool = config.compatTool(appID: app.appID)
-                let options = config.launchOptions(appID: app.appID)
-                print("\(app.appID)\t\(app.name)\t\(tool ?? "native")\(options.map { "\t\($0)" } ?? "")")
+            guard all else {
+                let config = SteamConfig()
+                for app in SteamInstall().installedApps() {
+                    let tool = config.compatTool(appID: app.appID)
+                    let options = config.launchOptions(appID: app.appID)
+                    print("\(app.appID)\t\(app.name)\t\(tool ?? "native")\(options.map { "\t\($0)" } ?? "")")
+                }
+                return
             }
+            let library = LibraryReader().read()
+            func line(_ game: LibraryGame) -> String {
+                let bits = game.is32Bit.map { $0 ? "32-bit" : "64-bit" } ?? "unknown"
+                let art = game.art.banner == nil ? "no art" : "art"
+                return "\(game.appID)\t\(game.name)\t\(bits)\t\(art)\(game.launchOptions.isEmpty ? "" : "\t\(game.launchOptions)")"
+            }
+            print("Installed (\(library.installed.count)):")
+            library.installed.forEach { print("  " + line($0) + ($0.install == .installing ? "\tinstalling" : "")) }
+            print("Not installed (\(library.notInstalled.count)):")
+            library.notInstalled.forEach { print("  " + line($0)) }
         }
     }
 

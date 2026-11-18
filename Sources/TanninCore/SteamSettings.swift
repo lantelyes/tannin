@@ -109,6 +109,11 @@ public struct SteamConfig: Sendable {
         (try? VDF.load(paths.steamConfig))?.value(at: Self.mappingPath + [appID, "name"])?.string
     }
 
+    /// Every app the user has chosen a compatibility tool for.
+    public func compatToolAppIDs() -> Set<String> {
+        Set((try? VDF.load(paths.steamConfig))?.value(at: Self.mappingPath)?.pairs.map(\.key) ?? [])
+    }
+
     /// The signed-in user's settings file: the most recently changed one if several accounts have used this Mac.
     func localConfig() throws -> URL {
         let userdata = paths.steamData.appending(path: "userdata")
@@ -129,6 +134,17 @@ public struct SteamConfig: Sendable {
     public func launchOptions(appID: String) -> String? {
         guard let file = try? localConfig() else { return nil }
         return (try? VDF.load(file))?.value(at: Self.launchOptionsPath(appID))?.string
+    }
+
+    /// Launch options for every app that has any, read in one pass.
+    public func allLaunchOptions() -> [String: String] {
+        guard let file = try? localConfig(), let vdf = try? VDF.load(file) else { return [:] }
+        let apps = vdf.value(at: Array(Self.launchOptionsPath("").dropLast(2)))?.pairs ?? []
+        var result: [String: String] = [:]
+        for app in apps {
+            if let options = app.value["LaunchOptions"]?.string, !options.isEmpty { result[app.key] = options }
+        }
+        return result
     }
 
     public func setLaunchOptions(appID: String, _ options: String) throws {

@@ -2,6 +2,9 @@ import Foundation
 import Observation
 import TanninCore
 
+/// Stands in until the app is rebuilt around `LibraryGame`.
+typealias WindowsGame = LibraryGame
+
 /// What the app shows and the actions it can take. The core library blocks while it works,
 /// so every call into it runs off the main actor and the results are brought back here.
 @Observable @MainActor
@@ -26,7 +29,7 @@ final class AppModel {
         let paths = paths
         let snapshot = await Task.detached {
             (StatusReader(paths: paths).read(),
-             SteamInstall(paths: paths).windowsGames(),
+             LibraryReader(paths: paths).read().installed,
              LogReader(paths: paths).recentLines())
         }.value
         status = snapshot.0

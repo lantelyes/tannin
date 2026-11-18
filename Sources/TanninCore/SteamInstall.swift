@@ -16,6 +16,9 @@ public struct SteamApp: Sendable, Equatable {
     public let name: String
     public let installDir: String
     public let library: URL
+    public let sizeOnDisk: Int64?
+    /// False while Steam is still downloading or updating the game.
+    public let isFullyInstalled: Bool
 }
 
 /// Read-only facts about the Steam installation on this Mac.
@@ -102,7 +105,10 @@ public struct SteamInstall: Sendable {
                     appID: appID,
                     name: state["name"]?.string ?? appID,
                     installDir: state["installdir"]?.string ?? "",
-                    library: library
+                    library: library,
+                    sizeOnDisk: state["SizeOnDisk"]?.string.flatMap(Int64.init),
+                    // Bit 4 of StateFlags means "fully installed". A manifest without the field is taken as installed.
+                    isFullyInstalled: state["StateFlags"]?.string.flatMap(Int.init).map { $0 & 4 != 0 } ?? true
                 ))
             }
         }

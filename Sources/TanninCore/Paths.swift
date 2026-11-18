@@ -40,4 +40,8 @@ public struct Paths: Sendable {
     public var steamConfig: URL { steamData.appending(path: "config/config.vdf") }
     public var steamLibraryFolders: URL { steamData.appending(path: "steamapps/libraryfolders.vdf") }
     public var steamCfg: URL { steamData.appending(path: "steam.cfg") }
+    /// Steam's cache of what it knows about every app in the library.
+    public var steamAppInfo: URL { steamData.appending(path: "appcache/appinfo.vdf") }
+    /// Artwork Steam has downloaded for its library, one folder per app.
+    public var steamLibraryCache: URL { steamData.appending(path: "appcache/librarycache") }
 }

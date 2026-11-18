@@ -68,22 +68,3 @@ public struct StatusReader: Sendable {
         )
     }
 }
-
-/// A game installed through Steam Play, with how it is set to run.
-public struct WindowsGame: Sendable, Hashable, Identifiable {
-    public let appID: String
-    public let name: String
-    public let launchOptions: String
-    public var id: String { appID }
-    public var settings: GameSettings { GameSettings(parsing: launchOptions) }
-}
-
-extension SteamInstall {
-    /// Installed games that run through a compatibility tool: the ones with a Windows environment beside them.
-    public func windowsGames() -> [WindowsGame] {
-        let config = SteamConfig(paths: paths)
-        return installedApps()
-            .filter { FileManager.default.fileExists(atPath: $0.library.appending(path: "steamapps/compatdata/\($0.appID)").path) }
-            .map { WindowsGame(appID: $0.appID, name: $0.name, launchOptions: config.launchOptions(appID: $0.appID) ?? "") }
-    }
-}
