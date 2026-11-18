@@ -6,7 +6,9 @@ import TanninCore
 struct WineEnginesSection: View {
     @Environment(AppModel.self) private var model
     @State private var removing: EngineRow?
+    @State private var isRemoving = false
     @State private var makingDefault: EngineRow?
+    @State private var isMakingDefault = false
 
     var body: some View {
         Section(model.engines.count > 1 ? "Wine Engines" : "Wine Engine") {
@@ -23,13 +25,13 @@ struct WineEnginesSection: View {
                 }
             }
         }
-        .confirmationDialog(removing.map { "Remove \($0.spec.title)?" } ?? "", isPresented: isRemoving, presenting: removing) { row in
+        .confirmationDialog(removing.map { "Remove \($0.spec.title)?" } ?? "", isPresented: $isRemoving, presenting: removing) { row in
             Button("Remove", role: .destructive) { Task { await model.removeEngine(row.spec) } }
             Button("Cancel", role: .cancel) {}
         } message: { row in
             Text(removalMessage(row))
         }
-        .confirmationDialog(makingDefault.map { "Make \($0.spec.title) the default?" } ?? "", isPresented: isMakingDefault, presenting: makingDefault) { row in
+        .confirmationDialog(makingDefault.map { "Make \($0.spec.title) the default?" } ?? "", isPresented: $isMakingDefault, presenting: makingDefault) { row in
             Button(model.status?.steamRunning == true ? "Quit Steam and Make Default" : "Make Default") {
                 Task { await model.makeDefaultEngine(row.spec) }
             }
@@ -37,14 +39,6 @@ struct WineEnginesSection: View {
         } message: { _ in
             Text("Games that have no Wine version of their own move to it. Tannin first keeps a copy of each game's Windows environment, so a game can be put back. Steam has to be closed for this; Tannin reopens it afterwards.")
         }
-    }
-
-    private var isRemoving: Binding<Bool> {
-        Binding { removing != nil } set: { if !$0 { removing = nil } }
-    }
-
-    private var isMakingDefault: Binding<Bool> {
-        Binding { makingDefault != nil } set: { if !$0 { makingDefault = nil } }
     }
 
     private func progress(_ row: EngineRow) -> EngineProgress? {
@@ -110,11 +104,17 @@ struct WineEnginesSection: View {
                 Text("Default").foregroundStyle(.secondary)
             }
             Menu("More", systemImage: "ellipsis") {
-                Button("Make Default") { makingDefault = row }
+                Button("Make Default") {
+                    makingDefault = row
+                    isMakingDefault = true
+                }
                     .disabled(row.isDefault)
                 Button("Show in Finder") { model.showEngineInFinder(row.spec) }
                 Divider()
-                Button("Remove…") { removing = row }
+                Button("Remove…") {
+                    removing = row
+                    isRemoving = true
+                }
                     .disabled(row.isDefault || row.spec == .newest)
             }
             .labelStyle(.iconOnly)

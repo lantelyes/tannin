@@ -14,6 +14,7 @@ struct GamePage: View {
     @State private var isChoosingToolkit = false
     /// The Wine version the user picked and has not confirmed yet.
     @State private var pendingMove: WineChoice?
+    @State private var isConfirmingMove = false
     @State private var isConfirmingRestore = false
 
     init(game: LibraryGame) {
@@ -60,7 +61,7 @@ struct GamePage: View {
             // Saved, or changed in Steam itself: show what Steam has now.
             draft = SettingsDraft(game.settings)
         }
-        .confirmationDialog(moveTitle, isPresented: isConfirmingMove, presenting: pendingMove) { choice in
+        .confirmationDialog(moveTitle, isPresented: $isConfirmingMove, presenting: pendingMove) { choice in
             Button(model.status?.steamRunning == true ? "Quit Steam and Move" : "Move") {
                 Task { await model.moveGame(game.appID, to: choice.spec) }
             }
@@ -266,12 +267,10 @@ struct GamePage: View {
         Binding {
             engine.pin.map(WineChoice.pinned) ?? .followDefault
         } set: { choice in
-            if choice.spec != engine.pin { pendingMove = choice }
+            guard choice.spec != engine.pin else { return }
+            pendingMove = choice
+            isConfirmingMove = true
         }
-    }
-
-    private var isConfirmingMove: Binding<Bool> {
-        Binding { pendingMove != nil } set: { if !$0 { pendingMove = nil } }
     }
 
     private var moveTitle: String {
