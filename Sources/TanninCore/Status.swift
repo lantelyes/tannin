@@ -82,7 +82,8 @@ public struct StatusReader: Sendable {
             addonLoaded: LogReader(paths: paths).addonLoadedOnLastStart(),
             updateFreeze: UpdateFreeze(paths: paths).isOn,
             engineInstalled: engine.isInstalled,
-            engineWine: Pins.engineWine,
+            // The engine games use unless they are given another, which is the newest one unless the user chose.
+            engineWine: EngineStore(paths: paths).defaultEngine()?.wine ?? Pins.engineWine,
             d3dMetalVersion: D3DMetalLink(paths: paths).linkedVersion(),
             bridgeVersion: Pins.notProtonVersion,
             runnerProblems: engine.isInstalled ? problems : []

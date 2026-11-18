@@ -70,7 +70,9 @@ struct GamePage: View {
             Text("Steam quits and reopens. Tannin first keeps a copy of this game's Windows environment, which holds its settings and may hold its saves, so you can put it back.")
         }
         .confirmationDialog(restoreTitle, isPresented: $isConfirmingRestore) {
-            Button("Restore") { Task { await model.restoreGame(game.appID) } }
+            Button(model.status?.steamRunning == true ? "Quit Steam and Restore" : "Restore") {
+                Task { await model.restoreGame(game.appID) }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(restoreMessage)
@@ -285,7 +287,7 @@ struct GamePage: View {
 
     private var restoreMessage: String {
         guard let copy = model.environmentCopies[game.appID] else { return "" }
-        return "It was made before this game moved from Wine \(copy.fromWine) to \(copy.toWine). Anything the game has saved in its Windows environment since then is replaced. Saves in Steam Cloud are not affected."
+        return "It was made before this game moved from Wine \(copy.fromWine) to \(copy.toWine). Anything the game has saved in its Windows environment since then is replaced. Saves in Steam Cloud are not affected. Steam quits and reopens."
     }
 
     // MARK: Graphics layer

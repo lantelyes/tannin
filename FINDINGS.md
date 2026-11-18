@@ -602,3 +602,29 @@ before). Checked from outside afterwards:
 - Seen on the way: this Mac's runner had already been brought up to 0.3.0, and the old 0.2.1 app reads that as
   "Setup isn't finished", because 0.2.1 expects the 32-bit ntdll unpatched. It only happens to an old app looking
   at a newer runner, which needs 0.3.0 to have run first; updating the app clears it.
+
+## 2026-11-18: the Wine version buttons, pressed in the app on real games (0.4.0, merged into `main`)
+
+A 0.4.0 build was opened beside the installed 0.3.0 and driven with computer use. Every step below was a button
+in the app; Steam was quit and reopened by the app each time it had to be.
+
+- **Install.** Engine › Wine 11.17 › Install downloaded the 461 MB engine from the network with a progress bar;
+  Pause stopped it at 222.6 MB and Resume carried on from there. The row then read "0 games · 1.36 GB".
+- **Move.** On LEGO Builder's Journey's page the Wine Version row appeared (it is hidden with one engine).
+  Choosing Wine 11.17 asked "Move LEGO® Builder's Journey to Wine 11.17?"; after "Quit Steam and Move" the page
+  showed the notice with Restore… and "Wine 11.17 · Set for this game only". Started from Steam, the game's run
+  log read `runner: build tannin-1117 (Tannin (Wine 11.17))` and it drew its title screen.
+- **Restore.** More › Restore Windows Environment… asked "Put back the copy from November 18 at 4:13 PM?". After
+  it, a marker file written into the environment was gone and the row read "Default (11.19)".
+- **Make Default.** Wine 11.17 › Make Default moved all three games ("The default. 3 games"), and the same on
+  Wine 11.19 moved them back. Remove… is greyed out on Wine 11.19, the engine Tannin sets up.
+- **Remove.** With Silent Hunter III pinned to 11.17, Remove… said "Silent Hunter III uses it and will move to
+  Wine 11.19. Tannin keeps a copy of its Windows environment first, and Steam quits and reopens. The engine goes
+  to the Trash." Afterwards the game was on the default, the engine was gone from the add-on's list and the
+  runner still passed every check.
+- Two things corrected because of this run: the line at the foot of the sidebar named the newest engine instead of
+  the default one, and the Restore question did not say that Steam quits.
+
+This Mac is back to one engine (Wine 11.19) and the copies made by these tests were removed.
+
+**Not done yet:** a 32-bit game or DXMT/DXVK started on 11.17; any of this on a second Mac.
