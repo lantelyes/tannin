@@ -69,6 +69,7 @@ struct SidebarView: View {
         .safeAreaBar(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 UpdateSidebarRow()
+                UpkeepSidebarRow()
                 SidebarStatus()
             }
         }

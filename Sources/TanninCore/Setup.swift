@@ -16,10 +16,20 @@ public struct Setup: Sendable {
         case ready
         /// Needs something else first; the text says what.
         case waiting(String)
+        /// Left out on purpose. Only the toolkit step can be; the text says what that means.
+        case skipped(String)
 
         public var isDone: Bool {
             if case .done = self { return true }
             return false
+        }
+
+        /// Done, or deliberately left out: either way nothing is waiting on the user.
+        public var isSettled: Bool {
+            switch self {
+            case .done, .skipped: true
+            case .ready, .waiting: false
+            }
         }
     }
 
@@ -51,6 +61,7 @@ public struct Setup: Sendable {
             return Engine(paths: paths).isInstalled ? .done("Wine \(Pins.engineWine)") : .ready
         case .toolkit:
             if let toolkit = GPTK(paths: paths).imported().last { return .done("D3DMetal \(toolkit.version)") }
+            if toolkitIsSkipped { return .skipped("Skipped. Games use DXMT. You can add it later on the Engine page.") }
             return .ready
         case .bridge:
             guard Engine(paths: paths).isInstalled else { return .waiting("Needs the Wine engine first") }
@@ -64,8 +75,7 @@ public struct Setup: Sendable {
             case .foreign: return .waiting("Another tool is loaded into Steam")
             case .off: break
             }
-            let earlier = Step.allCases.filter { $0 != .steamPlay }
-            return earlier.allSatisfy { state(of: $0).isDone } ? .ready : .waiting("Needs the steps above first")
+            return Self.required.allSatisfy { state(of: $0).isDone } ? .ready : .waiting("Needs the steps above first")
         }
     }
 
@@ -73,9 +83,23 @@ public struct Setup: Sendable {
         Step.allCases.map { ($0, state(of: $0)) }
     }
 
+    /// What Steam Play cannot do without. Apple's toolkit is not among them: without it games run on DXMT.
+    static let required: [Step] = [.rosetta, .steam, .engine, .bridge]
+
     /// True when everything is in place, whether or not Steam Play has been added to Steam yet.
     public var isReadyForSteamPlay: Bool {
-        Step.allCases.filter { $0 != .steamPlay }.allSatisfy { state(of: $0).isDone }
+        Self.required.allSatisfy { state(of: $0).isDone }
+    }
+
+    /// Whether the user chose to go without Apple's toolkit.
+    public var toolkitIsSkipped: Bool {
+        FileManager.default.fileExists(atPath: paths.toolkitSkipped.path)
+    }
+
+    /// Records that the user goes without Apple's toolkit for now. Importing it later clears this.
+    public func skipToolkit() throws {
+        try FileManager.default.createDirectory(at: paths.tannin, withIntermediateDirectories: true)
+        try Data().write(to: paths.toolkitSkipped)
     }
 
     // MARK: Doing the steps
@@ -95,8 +119,10 @@ public struct Setup: Sendable {
     @discardableResult
     public func importToolkit(from source: URL) throws -> GPTK.Imported {
         let toolkit = try GPTK(paths: paths).importToolkit(from: source)
+        try? FileManager.default.removeItem(at: paths.toolkitSkipped)
         if FileManager.default.fileExists(atPath: Runner(paths: paths).root.appending(path: "lib/wine").path) {
             try D3DMetalLink(paths: paths).link(toolkit)
+            try? InstallRecord.write(paths: paths)
         }
         return toolkit
     }
@@ -113,5 +139,6 @@ public struct Setup: Sendable {
         if let toolkit = try? GPTK(paths: paths).current() {
             try D3DMetalLink(paths: paths).link(toolkit)
         }
+        try InstallRecord.write(paths: paths)
     }
 }

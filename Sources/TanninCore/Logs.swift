@@ -71,7 +71,7 @@ public struct LogReader: Sendable {
     }
 
     /// Text for a bug report: versions plus the last lines of the log, with the home folder written as "~".
-    public func bugReport(status: TanninStatus, lines: Int = 60) -> String {
+    public func bugReport(status: TanninStatus, games: [LibraryGame] = [], lines: Int = 60) -> String {
         var out = [
             "Tannin bug report",
             "macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)",
@@ -79,9 +79,20 @@ public struct LogReader: Sendable {
             "Steam Play: \(status.steamPlay)",
             "Add-on loaded on last start: \(status.addonLoaded.map(String.init) ?? "never ran")",
             "Wine engine: \(status.engineInstalled ? status.engineWine : "not installed")",
-            "D3DMetal: \(status.d3dMetalVersion ?? "not imported")",
+            "D3DMetal: \(status.d3dMetalVersion ?? "not added")",
+            "DXMT: \(LayerStore.dxmtVersion), DXVK: \(LayerStore.dxvkVersion)",
             "Steam bridge: NotProton \(status.bridgeVersion)",
             "Update freeze: \(status.updateFreeze ? "on" : "off")",
+        ]
+        if !games.isEmpty {
+            out += ["", "Installed games:"]
+            for game in games {
+                let bits = game.is32Bit.map { $0 ? "32-bit" : "64-bit" } ?? "bits unknown"
+                let ran = LayerUsage.lastRun(appID: game.appID, is32Bit: game.is32Bit, paths: paths).map { ", last ran on \($0.title)" } ?? ""
+                out.append("\(game.name) (\(game.appID)): \(bits), layer \(game.settings.layer.title), Wine \(status.engineWine)\(ran)")
+            }
+        }
+        out += [
             "",
             "Last \(lines) log lines:",
         ]

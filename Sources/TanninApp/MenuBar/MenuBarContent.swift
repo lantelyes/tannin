@@ -17,7 +17,7 @@ struct MenuBarContent: View {
         }
         if let status = model.status {
             Text(model.problem?.title ?? "Steam Play is on")
-            Text("Wine \(status.engineWine), D3DMetal \(status.d3dMetalVersion ?? "not imported")")
+            Text(status.stackSummary)
         } else {
             Text("Checking this Mac…")
         }

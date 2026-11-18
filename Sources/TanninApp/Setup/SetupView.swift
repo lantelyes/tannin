@@ -12,7 +12,8 @@ struct SetupView: View {
     /// This window's own sheet, so asking here does not also open one on the main window.
     @State private var isAddingSteamPlay = false
 
-    private var doneCount: Int { Setup.Step.allCases.count { model.setup[$0]?.isDone == true } }
+    /// A skipped step counts: it has been dealt with.
+    private var doneCount: Int { Setup.Step.allCases.count { model.setup[$0]?.isSettled == true } }
     private var isAllDone: Bool { doneCount == Setup.Step.allCases.count }
 
     var body: some View {

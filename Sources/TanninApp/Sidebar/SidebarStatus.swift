@@ -50,6 +50,6 @@ struct SidebarStatus: View {
     private var detail: String {
         guard let status = model.status else { return " " }
         if let problem = model.problem { return problem.detail }
-        return "Wine \(status.engineWine), D3DMetal \(status.d3dMetalVersion ?? "missing")"
+        return status.stackSummary
     }
 }

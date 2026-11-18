@@ -54,8 +54,10 @@ enum Snapshotter {
         openWindow(WindowID.setup)
         for (name, appearance) in appearances {
             NSApp.appearance = NSAppearance(named: appearance)
-            model.show(.setupDownloading)
-            await capture(WindowID.setup, to: folder.appending(path: "setup-\(name).png"))
+            for scenario in Fixture.setupScenarios {
+                model.show(scenario.fixture)
+                await capture(WindowID.setup, to: folder.appending(path: "\(scenario.name)-\(name).png"))
+            }
         }
         NSApp.terminate(nil)
     }

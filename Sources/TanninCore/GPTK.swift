@@ -139,7 +139,13 @@ public struct D3DMetalLink: Sendable {
         let fm = FileManager.default
         guard fm.fileExists(atPath: runner.appending(path: "lib/wine").path) else { throw GPTKError.runnerMissing }
         try GPTK.verifyApple(toolkit.lib.appending(path: "external/D3DMetal.framework"))
-        if linkedVersion() != nil { try unlink() }
+        if linkedVersion() != nil { try takeOut() }
+
+        // The runner's 64-bit side holds DXMT while no D3DMetal is linked. The two cannot share a game, so
+        // Wine's own files go back first, and those are what is kept aside below.
+        let layers = LayerStore(paths: paths)
+        let hasEngine = Engine(paths: paths).isInstalled
+        if hasEngine { try layers.putWineOwn(into: runner, arch: "x86_64") }
 
         // Keep Wine's own files that are about to be replaced.
         for arch in ["x86_64-windows", "x86_64-unix"] {
@@ -178,10 +184,21 @@ public struct D3DMetalLink: Sendable {
 
         try GPTK.verifyApple(runner.appending(path: "lib/external/D3DMetal.framework"))
         try toolkit.version.write(to: marker, atomically: true, encoding: .utf8)
+        // Fresh layer files, so the add-on rebuilds its per-layer copies of the runner from the changed one.
+        if hasEngine { try layers.prepare() }
     }
 
-    /// Takes D3DMetal out again and puts Wine's own files back.
+    /// Takes D3DMetal out again. Games then run on DXMT.
     public func unlink() throws {
+        try takeOut()
+        let layers = LayerStore(paths: paths)
+        guard Engine(paths: paths).isInstalled, FileManager.default.fileExists(atPath: runner.appending(path: "lib/wine").path) else { return }
+        try layers.putDXMT(into: runner, arch: "x86_64")
+        try layers.prepare()
+    }
+
+    /// Removes D3DMetal's files and puts Wine's own back.
+    private func takeOut() throws {
         let fm = FileManager.default
         for name in ["D3DMetal.framework", "libd3dshared.dylib"] {
             try? fm.removeItem(at: runner.appending(path: "lib/external/\(name)"))

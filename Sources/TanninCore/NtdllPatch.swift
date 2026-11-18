@@ -25,7 +25,7 @@ public enum NtdllPatchError: Error, CustomStringConvertible {
 
 /// Makes the copy of ntdll that hands a game's Steam client calls to the Steam bridge.
 /// The detours were derived on 2026-11-17 with NotProton's tools (see Tools/ntdll-patch/UPSTREAM.md)
-/// and Homebrew mingw-w64 (GCC 16.2.0). At run time the patch is applied from `NtdllRecipe`, in Swift.
+/// and Homebrew mingw-w64 (GCC 16.2.0); the 32-bit one again on 2026-11-18 from the corrected `shim32.S`. At run time the patch is applied from `NtdllRecipe`, in Swift.
 public struct NtdllPatch: Sendable {
     public let paths: Paths
 
@@ -38,8 +38,8 @@ public struct NtdllPatch: Sendable {
         NtdllPin(arch: "i386",
                  cleanSHA256: "404264bcb910ca81fd4832e14c2bb8a8a808742fad562ff18df7476575e26473",
                  detourFile: "detour32-winecx-4.8.3.bin",
-                 detourSHA256: "2fe96f4b7d6a3f6e25bae62337d5a2431d803fb945488b12e6c61af98f44ba57",
-                 patchedSHA256: "712c793eee2671fa63634d027dfe76017ab8ef3290aa14bebf67477b4cc76475"),
+                 detourSHA256: "e22e92dec742b6b6b52d0bc10aea18c8fd1a73ecb508f83e57c1b80ec857de4c",
+                 patchedSHA256: "5d515cf480c596b43e61726a745a1af261228ee95a996c6b9c18a7c078c9212e"),
     ]
 
     public init(paths: Paths = .live) {

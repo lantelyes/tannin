@@ -12,6 +12,13 @@ final class AppModel {
     private(set) var setup: [Setup.Step: Setup.State] = [:]
     /// The setup step that is downloading or paused, if any.
     private(set) var setupProgress: SetupProgress?
+    /// What an earlier Tannin installed that this one would bring up to date.
+    private(set) var upkeep: [Upkeep.Item] = []
+    private(set) var upkeepProgress: UpkeepProgress?
+    /// Which graphics layer each installed game last ran on, where its log says.
+    private(set) var layerUsage: [String: LayerUsage] = [:]
+    /// The Wine engine's size on disk, worked out once.
+    private(set) var engineSize: Int64?
     /// A plain description of the action in progress, or nil.
     private(set) var activity: String?
     private(set) var errorMessage: String?
@@ -54,15 +61,25 @@ final class AppModel {
         guard !isShowingFixture else { return }
         let paths = paths
         let known = libraryFingerprint
+        let installed = library.installed
+        let needsEngineSize = engineSize == nil
         let snapshot = await Task.detached {
             let reader = LibraryReader(paths: paths)
             let fingerprint = reader.fingerprint()
+            let library = fingerprint == known ? nil : reader.read()
+            var usage: [String: LayerUsage] = [:]
+            for game in library?.installed ?? installed {
+                usage[game.appID] = LayerUsage.lastRun(appID: game.appID, is32Bit: game.is32Bit, paths: paths)
+            }
             return (
                 status: StatusReader(paths: paths).read(),
                 fingerprint: fingerprint,
-                library: fingerprint == known ? nil : reader.read(),
+                library: library,
                 logLines: LogReader(paths: paths).recentLines(),
-                setup: Setup(paths: paths).states()
+                setup: Setup(paths: paths).states(),
+                upkeep: Upkeep(paths: paths).plan(),
+                usage: usage,
+                engineSize: needsEngineSize ? Engine(paths: paths).sizeOnDisk() : nil
             )
         }.value
         guard !isShowingFixture else { return }
@@ -75,6 +92,9 @@ final class AppModel {
         if logLines != snapshot.logLines { logLines = snapshot.logLines }
         let states = Dictionary(uniqueKeysWithValues: snapshot.setup.map { ($0.step, $0.state) })
         if setup != states { setup = states }
+        if upkeep != snapshot.upkeep { upkeep = snapshot.upkeep }
+        if layerUsage != snapshot.usage { layerUsage = snapshot.usage }
+        if let size = snapshot.engineSize { engineSize = size }
         reconcileSelection()
     }
 
@@ -102,6 +122,10 @@ final class AppModel {
         setupProgress = fixture.setupProgress
         selection = fixture.selection
         isShowingSteamPlaySheet = fixture.isShowingSteamPlaySheet
+        upkeep = fixture.upkeep
+        upkeepProgress = fixture.upkeepProgress
+        layerUsage = fixture.layerUsage
+        engineSize = 1_300_000_000
     }
 
     /// Goes back to what is really on this Mac.
@@ -111,6 +135,8 @@ final class AppModel {
         setupProgress = nil
         isShowingSteamPlaySheet = false
         selection = nil
+        upkeepProgress = nil
+        engineSize = nil
         await refresh()
     }
 
@@ -180,6 +206,38 @@ final class AppModel {
         }
     }
 
+    /// Goes on without Apple's toolkit for now. Games then run on DXMT.
+    func skipToolkit() async {
+        let paths = paths
+        await perform("Skipping the Game Porting Toolkit") {
+            try Setup(paths: paths).skipToolkit()
+        }
+    }
+
+    /// Does one thing the after-update step found. Failure leaves everything as it was and is shown on its row.
+    func runUpkeep(_ item: Upkeep.Item) async {
+        guard !isBusy else { return }
+        let paths = paths
+        activity = "Finishing the update"
+        upkeepProgress = .working(item)
+        do {
+            try await Task.detached { try Upkeep(paths: paths).run(item) }.value
+            upkeepProgress = .finished
+        } catch {
+            upkeepProgress = .failed(item, String(describing: error))
+        }
+        activity = nil
+        await refresh()
+    }
+
+    /// Clears the "Everything is up to date" line once it has been seen.
+    func dismissUpkeepResult() {
+        if upkeepProgress == .finished { upkeepProgress = nil }
+    }
+
+    /// True while there is something for the Engine page's "After the Update" rows to show.
+    var hasUpkeepToShow: Bool { !upkeep.isEmpty || upkeepProgress != nil }
+
     // MARK: Asking Steam
 
     private func ask(_ request: SteamLauncher.Request) {
@@ -204,7 +262,7 @@ final class AppModel {
 
     func bugReport() -> String {
         guard let status else { return "Tannin has not finished reading its status yet." }
-        return LogReader(paths: paths).bugReport(status: status)
+        return LogReader(paths: paths).bugReport(status: status, games: library.installed)
     }
 
     var logFile: URL { LogReader(paths: paths).addonLog }

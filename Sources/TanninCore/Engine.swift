@@ -67,6 +67,16 @@ public struct Engine: Sendable {
         return root
     }
 
+    /// How much disk the unpacked engine takes. Walks the whole folder, so ask once and keep the answer.
+    public func sizeOnDisk() -> Int64? {
+        guard isInstalled, let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.totalFileAllocatedSizeKey]) else { return nil }
+        var total: Int64 = 0
+        for case let file as URL in files {
+            total += Int64((try? file.resourceValues(forKeys: [.totalFileAllocatedSizeKey]).totalFileAllocatedSize) ?? 0)
+        }
+        return total
+    }
+
     /// What the engine says about itself, e.g. "wine-11.19".
     public func reportedVersion() throws -> String {
         guard isInstalled else { throw EngineError.notInstalled }

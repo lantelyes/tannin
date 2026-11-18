@@ -19,6 +19,10 @@ struct SetupStepRow: View {
         if case .waiting = state { return true }
         return false
     }
+    private var isSkipped: Bool {
+        if case .skipped = state { return true }
+        return false
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -50,7 +54,7 @@ struct SetupStepRow: View {
         } else if isRunning {
             ProgressView().controlSize(.small)
         } else {
-            StatusSymbol.pending.image.font(.title3).opacity(isWaiting ? 0.6 : 1)
+            StatusSymbol.pending.image.font(.title3).opacity(isWaiting || isSkipped ? 0.5 : 1)
         }
     }
 
@@ -83,10 +87,13 @@ struct SetupStepRow: View {
             Text(downloadCaption(idle: "Wine \(Pins.engineWine), built from CodeWeavers' published source.",
                                  working: "Downloading Wine \(Pins.engineWine)."))
         case .toolkit:
-            if state.isDone {
-                Text("Apple's graphics translator, from your own copy. Apple's signature is valid.")
-            } else {
-                Text("Apple's graphics translator, free with an Apple account.\n[Get It from Apple](\(Self.toolkitPage.absoluteString))")
+            switch state {
+            case .done:
+                Text("Apple's graphics layer, from your own copy. Apple's signature is valid.")
+            case let .skipped(detail):
+                Text(detail)
+            case .ready, .waiting:
+                Text("Apple's graphics layer. Games that use Direct3D 12 need it. Free with an Apple account.\n[Get It from Apple](\(Self.toolkitPage.absoluteString))")
             }
         case .bridge:
             Text(downloadCaption(idle: "Lets games talk to Steam. Built once the engine has downloaded.",
@@ -139,6 +146,9 @@ struct SetupStepRow: View {
                 } else {
                     Text("Waiting").foregroundStyle(.secondary)
                 }
+            case .skipped:
+                Button("Choose Disk Image…") { isChoosingToolkit = true }
+                    .disabled(model.isBusy)
             case .ready:
                 readyControl
             }
@@ -167,6 +177,8 @@ struct SetupStepRow: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(model.isBusy)
         case .toolkit:
+            Button("Skip") { Task { await model.skipToolkit() } }
+                .disabled(model.isBusy)
             Button("Choose Disk Image…") { isChoosingToolkit = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.isBusy)

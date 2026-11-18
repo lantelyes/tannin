@@ -1,6 +1,6 @@
 # Where these files come from
 
-Copied unchanged from NotProton (https://github.com/NotProtonNot/NotProton), directory `ntdll-patch/`,
+Copied from NotProton (https://github.com/NotProtonNot/NotProton), directory `ntdll-patch/`,
 tag `v1.2.6` (commit `e380d11a774bcabb70cc99d4f2dc30882f7eadab`), fetched 2026-11-17.
 
 Licence: GPL-3.0, same as NotProton. Copyright remains with the NotProton authors.
@@ -14,6 +14,12 @@ The detour makes a game's `steamclient64.dll` hand its calls to the Steam bridge
 
 They need `python3` with `capstone`, and Homebrew `mingw-w64`. Build outputs go next to the sources and are
 ignored by git.
+
+## Tannin's change to `shim32.S` (2026-11-18)
+
+Upstream's 32-bit entry code runs `mov ebx, ebp` and then `mov esi, WM_REG`. On winecx 4.8.3 the resolver finds
+`wm` in `ebx`, so the second instruction read the frame pointer instead and the detour crashed every 32-bit
+process on its first module load. Tannin's copy reads `WM_REG` first. Every other file is unchanged.
 
 ## Tannin's own addition
 

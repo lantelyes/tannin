@@ -27,6 +27,9 @@ struct EngineView: View {
                             }
                         }
                     }
+                    if model.hasUpkeepToShow {
+                        UpkeepSection()
+                    }
                     steamPlay(status)
                     wine(status)
                     graphics(status)
@@ -132,21 +135,45 @@ struct EngineView: View {
                 state(status.engineInstalled ? "Installed" : "Not installed", status.engineInstalled ? .ok : .pending)
             } label: {
                 Text("Wine \(status.engineWine)")
-                Text("winecx \(Pins.engineVersion), built from CodeWeavers' published source. The download is checked against a pinned hash.")
+                Text(wineCaption(status))
             }
         }
     }
 
+    /// "2 games · 1.3 GB. Built from CodeWeavers' published source."
+    private func wineCaption(_ status: TanninStatus) -> String {
+        let source = "Built from CodeWeavers' published source."
+        guard status.engineInstalled else { return source }
+        let count = model.library.installed.count
+        var facts = [count == 1 ? "1 game" : "\(count) games"]
+        if let size = model.engineSize {
+            facts.append(size.formatted(.byteCount(style: .file)))
+        }
+        return facts.joined(separator: " · ") + ". " + source
+    }
+
     private func graphics(_ status: TanninStatus) -> some View {
-        Section("Graphics") {
+        Section("Graphics Layers") {
             LabeledContent {
                 Button(status.d3dMetalVersion == nil ? "Choose Disk Image…" : "Replace…") { isChoosingToolkit = true }
                     .disabled(model.isBusy)
             } label: {
-                Text(status.d3dMetalVersion.map { "D3DMetal \($0)" } ?? "D3DMetal is not imported")
+                Text(status.d3dMetalVersion.map { "D3DMetal \($0)" } ?? "D3DMetal is not added")
                 Text(status.d3dMetalVersion == nil
-                    ? "Apple's graphics translator, from your own copy of the Game Porting Toolkit."
-                    : "From your Game Porting Toolkit. Apple's signature is valid.")
+                    ? "Apple's layer, for Direct3D 12 games. From your own copy of the Game Porting Toolkit, free with an Apple account."
+                    : "Apple's layer, from your Game Porting Toolkit. Apple's signature is valid.")
+            }
+            LabeledContent {
+                state("Included", .ok)
+            } label: {
+                Text("DXMT \(LayerStore.dxmtVersion)")
+                Text("Direct3D 10 and 11. Comes inside the Wine engine.")
+            }
+            LabeledContent {
+                state("Included", .ok)
+            } label: {
+                Text("DXVK \(LayerStore.dxvkVersion)")
+                Text("Direct3D 11 through Vulkan. Comes inside the Wine engine.")
             }
         }
     }
@@ -164,7 +191,7 @@ struct EngineView: View {
             } label: {
                 Text("Steam Bridge \(status.bridgeVersion)")
                 Text(status.runnerProblems.isEmpty || !status.engineInstalled
-                    ? "Lets 64-bit games talk to Steam. Built on the NotProton project."
+                    ? "Lets games talk to Steam. Built on the NotProton project."
                     : status.runnerProblems.joined(separator: " "))
             }
         }

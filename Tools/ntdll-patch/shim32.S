@@ -10,8 +10,11 @@ shim_entry32:
 delta_ref:
     pop     ecx
     sub     ecx, offset delta_ref       // ecx = load base, preferred base
-    mov     ebx, ebp                    // fp; ebx/esi survive the cdecl call 
+    // Tannin's change (2026-11-18): read wm before ebx is reused. Upstream sets ebx first, and on an ntdll
+    // where the resolver finds wm in ebx (winecx 4.8.3) that handed the frame pointer to the detour as wm,
+    // which crashed every 32-bit process the first time a module was loaded.
     mov     esi, WM_REG                 // wm 
+    mov     ebx, ebp                    // fp; ebx/esi survive the cdecl call 
     mov     edi, esp                    // pre-align esp, for an exact restore 
     and     esp, -16
     sub     esp, 0x30                   // [esp+0x00..0x0B] args, [esp+0x0C..0x27] ctx 

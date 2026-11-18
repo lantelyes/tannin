@@ -33,12 +33,14 @@ public struct Runner: Sendable {
 
     /// Which ntdll files get the Steam bridge detour.
     ///
-    /// Only the 64-bit one. The 32-bit detour crashes 32-bit programs on this engine: it calls ntdll functions at
-    /// fixed addresses for image base 0x7bc00000, and this engine loads 32-bit ntdll elsewhere (the crash was 0xb2
-    /// into the detour with ntdll at 0x7bf10000). That broke Wine's own Mono setup step, which is a 32-bit helper,
-    /// and made Wine show its "Wine Mono Installer" download dialog. Found 2026-11-17; see FINDINGS.md.
-    /// Cost: 32-bit games start, but do not get the Steam bridge until this is solved.
-    public static let patchedArchitectures = ["x86_64"]
+    /// Both, from 0.3.0. Until then only the 64-bit one was patched, because the 32-bit detour crashed every
+    /// 32-bit program on this engine (Wine's own Mono setup step among them, which made Wine show its "Wine Mono
+    /// Installer" dialog). The cause was one instruction in the detour's entry code reusing a register before
+    /// reading it; see Tools/ntdll-patch/UPSTREAM.md and FINDINGS.md (2026-11-17 and 2026-11-18). Without the
+    /// 32-bit detour a 32-bit game that needs Steam quits at once.
+    public static let patchedArchitectures = ["x86_64", "i386"]
+
+    static let layersCheck = "Graphics layers"
 
     public static var toolsLine: String { "\(toolName)\t\(build)\t\(flavor)\t\(display)" }
 
@@ -83,6 +85,11 @@ public struct Runner: Sendable {
         try replace(bridge.appending(path: "x86_64-unix/lsteamclient.so"),
                     root.appending(path: "lib/wine/x86_64-unix/lsteamclient.so"))
 
+        // DXMT for Direct3D 10 and 11. The 64-bit half makes way when D3DMetal is linked in.
+        let layers = LayerStore(paths: paths)
+        for arch in ["x86_64", "i386"] { try layers.putDXMT(into: root, arch: arch) }
+        try layers.prepare()
+
         try writeToolsLine()
         try (Self.defaults.joined(separator: "\n") + "\n").write(to: defaultsFile, atomically: true, encoding: .utf8)
     }
@@ -122,6 +129,9 @@ public struct Runner: Sendable {
             if Self.patchedArchitectures.contains(pin.arch) {
                 if hash == pin.patchedSHA256, same(live, staged) {
                     checks.append(Check("ntdll \(pin.arch)", .ok, "Patched copy in place and matches the staged copy."))
+                } else if hash == pin.cleanSHA256, pin.arch == "i386", !exists(staged) {
+                    // What Tannin 0.2 built: it works, but 32-bit games get no Steam bridge.
+                    checks.append(Check("ntdll \(pin.arch)", .attention, "Not patched yet, so 32-bit games that need Steam quit at once. Run: tannin upkeep run"))
                 } else {
                     checks.append(Check("ntdll \(pin.arch)", .broken, "Not the patched copy (\(hash ?? "missing"))."))
                 }
@@ -154,9 +164,21 @@ public struct Runner: Sendable {
             : Check("Tool listing", .broken, "\(toolsFile.path) does not list \(Self.toolName) first."))
 
         let gptk = root.appending(path: "lib64/apple_gptk/external/libd3dshared.dylib")
+        let layers = LayerStore(paths: paths)
+        if missing.isEmpty {
+            let wanted = exists(gptk) ? ["i386"] : ["x86_64", "i386"]
+            let without = wanted.filter { !layers.runnerHasDXMT(root, arch: $0) }
+            if !without.isEmpty {
+                checks.append(Check(Self.layersCheck, .attention, "DXMT is not in the runner yet (\(without.joined(separator: ", "))). Run: tannin upkeep run"))
+            } else if !layers.isPrepared {
+                checks.append(Check(Self.layersCheck, .attention, "The files for choosing a layer per game are not in place. Run: tannin upkeep run"))
+            } else {
+                checks.append(Check(Self.layersCheck, .ok, "DXMT \(LayerStore.dxmtVersion) and DXVK \(LayerStore.dxvkVersion) are ready."))
+            }
+        }
         checks.append(exists(gptk)
             ? Check("D3DMetal", .ok, "Linked into the runner.")
-            : Check("D3DMetal", .attention, "Not linked yet. Import the Game Porting Toolkit: tannin gptk import <dmg>"))
+            : Check("D3DMetal", .info, "Not added. Games use DXMT; Direct3D 12 games need it: tannin gptk import <dmg>"))
         return checks
     }
 }

@@ -7,8 +7,8 @@ struct Tannin: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tannin",
         abstract: "Free Steam Play for Mac: Windows games from the native Steam client.",
-        version: "0.1.0",
-        subcommands: [DoctorCommand.self, SetupCommand.self, EngineCommand.self, GPTKCommand.self, KitCommand.self, RunnerCommand.self, SteamCommand.self, GameCommand.self]
+        version: TanninVersion.current,
+        subcommands: [DoctorCommand.self, SetupCommand.self, EngineCommand.self, GPTKCommand.self, KitCommand.self, RunnerCommand.self, LayersCommand.self, UpkeepCommand.self, SteamCommand.self, GameCommand.self]
     )
 }
 
@@ -16,7 +16,7 @@ struct GPTKCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "gptk",
         abstract: "Apple's Game Porting Toolkit (D3DMetal), from your own download.",
-        subcommands: [Import.self, Link.self, Unlink.self, Status.self]
+        subcommands: [Import.self, Skip.self, Link.self, Unlink.self, Status.self]
     )
 
     struct Import: ParsableCommand {
@@ -28,8 +28,20 @@ struct GPTKCommand: ParsableCommand {
         func run() throws {
             let toolkit = try GPTK().importToolkit(from: URL(fileURLWithPath: (source as NSString).expandingTildeInPath))
             print("Imported D3DMetal \(toolkit.version). Apple's signature verified.")
-            try D3DMetalLink().link(toolkit)
-            print("Linked into the runner.")
+            try? FileManager.default.removeItem(at: Paths.live.toolkitSkipped)
+            if FileManager.default.fileExists(atPath: Runner().root.appending(path: "lib/wine").path) {
+                try D3DMetalLink().link(toolkit)
+                try? InstallRecord.write()
+                print("Linked into the runner.")
+            }
+        }
+    }
+
+    struct Skip: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Go without Apple's toolkit for now. Games then run on DXMT; Direct3D 12 games need the toolkit.")
+        func run() throws {
+            try Setup().skipToolkit()
+            print("Skipped. Import it any time with: tannin gptk import <disk image>")
         }
     }
 
@@ -38,6 +50,7 @@ struct GPTKCommand: ParsableCommand {
         func run() throws {
             let toolkit = try GPTK().current()
             try D3DMetalLink().link(toolkit)
+            try? InstallRecord.write()
             print("D3DMetal \(toolkit.version) linked into the runner.")
         }
     }
@@ -46,7 +59,8 @@ struct GPTKCommand: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Take D3DMetal out of the runner and put Wine's own files back.")
         func run() throws {
             try D3DMetalLink().unlink()
-            print("D3DMetal removed from the runner.")
+            try? InstallRecord.write()
+            print("D3DMetal removed from the runner. Games now run on DXMT.")
         }
     }
 
@@ -145,7 +159,7 @@ struct GameCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "game",
         abstract: "How individual games run.",
-        subcommands: [List.self, Use.self, Set.self]
+        subcommands: [List.self, Use.self, Set.self, Options.self]
     )
 
     struct List: ParsableCommand {
@@ -194,16 +208,20 @@ struct GameCommand: ParsableCommand {
     }
 
     struct Set: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Set how a game runs. Writes its Steam launch options (Steam must be closed).")
+        static let configuration = CommandConfiguration(abstract: "Set how a game runs. Writes its Steam launch options (Steam must be closed). Anything not named stays as it is.")
 
         @Argument(help: "The game's Steam app ID.")
         var appID: String
 
-        @Option(name: .long, help: "Ray tracing: on or off.") var dxr: String?
-        @Option(name: .long, help: "MetalFX upscaling: on or off.") var metalfx: String?
-        @Option(name: .long, help: "Frame cap in frames per second.") var cap: Int?
+        @Option(name: .long, help: "Graphics layer: automatic, d3dmetal, dxmt or dxvk.") var layer: String?
+        @Option(name: .long, help: "Ray tracing (D3DMetal): on or off.") var dxr: String?
+        @Option(name: .long, help: "MetalFX upscaling (D3DMetal): on or off.") var metalfx: String?
+        @Option(name: .long, help: "Metal 4 renderer (D3DMetal): on or off.") var metal4: String?
+        @Option(name: .long, help: "Upscaling (DXMT): off, 1.5, 2 or 3.") var upscale: String?
+        @Option(name: .customLong("async"), help: "Prepare effects in the background (DXVK): on or off.") var background: String?
+        @Option(name: .long, help: "Frame cap in frames per second. 0 for none.") var cap: Int?
         @Option(name: .long, help: "Performance overlay: on or off.") var hud: String?
-        @Option(name: .long, help: "Metal 4 renderer: on or off.") var metal4: String?
+        @Flag(name: .long, help: "Start from nothing set instead of from the game's present settings.") var reset = false
 
         func toggle(_ value: String?, _ name: String) throws -> Bool? {
             guard let value else { return nil }
@@ -213,14 +231,112 @@ struct GameCommand: ParsableCommand {
 
         func run() throws {
             guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 1544360.") }
-            let settings = GameSettings(
-                rayTracing: try toggle(dxr, "dxr"), metalFX: try toggle(metalfx, "metalfx"), frameCap: cap,
-                performanceHUD: try toggle(hud, "hud"), metal4: try toggle(metal4, "metal4")
-            )
             let config = SteamConfig()
-            let options = settings.launchOptions(merging: config.launchOptions(appID: appID) ?? "")
+            let existing = config.launchOptions(appID: appID) ?? ""
+            var settings = reset ? GameSettings() : GameSettings(parsing: existing)
+            if let layer {
+                let names: [String: GraphicsLayer] = ["automatic": .automatic, "d3dmetal": .d3dMetal, "dxmt": .dxmt, "dxvk": .dxvk]
+                guard let chosen = names[layer.lowercased()] else { throw ValidationError("--layer takes automatic, d3dmetal, dxmt or dxvk.") }
+                settings.layer = chosen
+            }
+            if let value = try toggle(dxr, "dxr") { settings.rayTracing = value }
+            if let value = try toggle(metalfx, "metalfx") { settings.metalFX = value }
+            if let value = try toggle(metal4, "metal4") { settings.metal4 = value }
+            if let value = try toggle(background, "async") { settings.backgroundEffects = value }
+            if let value = try toggle(hud, "hud") { settings.performanceHUD = value }
+            if let cap { settings.frameCap = cap > 0 ? cap : nil }
+            if let upscale {
+                guard let factor = upscale == "off" ? 0 : Double(upscale), GameSettings.upscalingFactors.contains(factor) else {
+                    throw ValidationError("--upscale takes off, 1.5, 2 or 3.")
+                }
+                settings.upscaling = factor > 0 ? factor : nil
+            }
+            let options = settings.launchOptions(merging: existing)
             try config.setLaunchOptions(appID: appID, options)
-            print("Launch options for \(appID): \(options)")
+            print("Launch options for \(appID): \(options.isEmpty ? "(none)" : options)")
+        }
+    }
+
+    struct Options: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Show a game's Steam launch options, or replace them word for word (Steam must be closed).")
+
+        @Argument(help: "The game's Steam app ID.")
+        var appID: String
+
+        @Option(name: .customLong("set"), help: "The launch options to write, exactly as given. An empty text clears them.")
+        var text: String?
+
+        func run() throws {
+            guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 1544360.") }
+            let config = SteamConfig()
+            if let text { try config.setLaunchOptions(appID: appID, text) }
+            let options = config.launchOptions(appID: appID) ?? ""
+            print(options.isEmpty ? "(none)" : options)
+        }
+    }
+}
+
+struct UpkeepCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "upkeep",
+        abstract: "After a Tannin update: bring what an earlier version installed up to date.",
+        subcommands: [Status.self, Run.self]
+    )
+
+    struct Status: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Show what is behind. Changes nothing.")
+        func run() {
+            let plan = Upkeep().plan()
+            if plan.isEmpty { print("Everything is up to date.") }
+            for item in plan { print("\(item.rawValue): \(item.title). \(item.detail)") }
+            if let record = InstallRecord.read() {
+                for runner in record.runners {
+                    print("Recorded: \(runner.tool), Wine \(runner.wineVersion), D3DMetal \(runner.d3dMetalVersion ?? "none"), built by Tannin \(runner.tannin)")
+                }
+            } else {
+                print("No install record (an install made by Tannin 0.2, or nothing installed).")
+            }
+        }
+    }
+
+    struct Run: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Do everything that is behind. Does not touch Steam.app.")
+        func run() throws {
+            let upkeep = Upkeep()
+            let plan = upkeep.plan()
+            if plan.isEmpty { print("Everything is up to date."); return }
+            for item in plan {
+                try upkeep.run(item)
+                print("Done: \(item.title)")
+            }
+        }
+    }
+}
+
+struct LayersCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "layers",
+        abstract: "The graphics layers a game can be given: D3DMetal, DXMT, DXVK.",
+        subcommands: [Status.self, Prepare.self]
+    )
+
+    struct Status: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Show which layers are in place.")
+        func run() {
+            let layers = LayerStore()
+            let runner = Runner().root
+            print("D3DMetal:  \(D3DMetalLink().linkedVersion().map { "\($0), in the runner" } ?? "not added")")
+            print("DXMT:      \(LayerStore.dxmtVersion), runner 64-bit: \(layers.runnerHasDXMT(runner, arch: "x86_64") ? "yes" : "no"), 32-bit: \(layers.runnerHasDXMT(runner, arch: "i386") ? "yes" : "no")")
+            print("DXVK:      \(LayerStore.dxvkVersion)")
+            print("Per game:  \(layers.isPrepared ? "ready (\(layers.root.path))" : "not prepared")")
+        }
+    }
+
+    struct Prepare: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Put DXMT into the runner and write the files for choosing a layer per game. Downloads nothing and does not touch Steam.")
+        func run() throws {
+            try LayerStore().addToRunner()
+            Status().run()
         }
     }
 }
@@ -370,6 +486,7 @@ struct SetupCommand: ParsableCommand {
             case let .done(detail): "done     \(detail)"
             case .ready: "to do"
             case let .waiting(reason): "waiting  \(reason)"
+            case let .skipped(detail): "skipped  \(detail)"
             }
             print("\(step.rawValue.padding(toLength: 11, withPad: " ", startingAt: 0))\(text)")
         }

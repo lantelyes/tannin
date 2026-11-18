@@ -13,17 +13,36 @@ struct Fixture {
     var isShowingSteamPlaySheet = false
     /// What Tannin knows about its own updates; nil is a copy that cannot update itself.
     var updates: UpdateStatus?
+    var upkeep: [Upkeep.Item] = []
+    var upkeepProgress: UpkeepProgress?
+    var layerUsage: [String: LayerUsage] = [:]
 
     /// Every drawn state of the main window, by the name its picture is saved under.
     static var mainWindowScenarios: [(name: String, fixture: Fixture)] {
         [
-            ("game", Fixture(status: ready, library: library, selection: .game(lego.appID))),
+            ("game", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal])),
+            ("game-d3dmetal", chosen("NOTPROTON_ENV_TANNIN_LAYER=d3dmetal D3DM_ENABLE_METALFX=1 D3DM_MAX_FPS=60 %command%", ran: .d3dMetal)),
+            ("game-dxmt", chosen("NOTPROTON_RUNNER_VARIANT=tannin-dxmt DXMT_CONFIG=d3d11.preferredMaxFrameRate=60 %command%", ran: .dxmt)),
+            ("game-dxvk", chosen("NOTPROTON_RUNNER_VARIANT=tannin-plain NOTPROTON_TANNIN_DXVK=1 DXVK_ASYNC=1 DXVK_FRAME_RATE=60 %command%", ran: nil)),
+            ("game-never-run", Fixture(status: ready, library: library, selection: .game(lego.appID))),
+            ("game-32-bit", thirtyTwoBit(ran: .dxmt)),
+            ("game-direct3d-9", thirtyTwoBit(ran: .wineOwn)),
+            ("game-no-toolkit", Fixture(status: noToolkit, library: Library(installed: [legoCapped], notInstalled: [silentHunter, specOps]),
+                                        selection: .game(lego.appID), layerUsage: [lego.appID: .dxmt])),
             ("engine", Fixture(status: ready, library: library, selection: .engine)),
+            ("engine-no-toolkit", Fixture(status: noToolkit, library: library, selection: .engine)),
+            ("engine-after-update", Fixture(status: ready, library: library, selection: .engine, upkeep: [.graphicsLayers])),
+            ("engine-after-update-working", Fixture(status: ready, library: library, selection: .engine, upkeep: [.graphicsLayers],
+                                                    upkeepProgress: .working(.graphicsLayers))),
+            ("engine-after-update-finished", Fixture(status: ready, library: library, selection: .engine, upkeepProgress: .finished)),
+            ("engine-after-update-failed", Fixture(status: ready, library: library, selection: .engine, upkeep: [.graphicsLayers],
+                                                   upkeepProgress: .failed(.graphicsLayers, "A Windows game is running. Quit it first, then try again."))),
+            ("after-update-sidebar", Fixture(status: ready, library: library, selection: .game(lego.appID), upkeep: [.graphicsLayers],
+                                             layerUsage: [lego.appID: .d3dMetal])),
             ("logs", Fixture(status: ready, library: library, logLines: log, selection: .logs)),
             ("empty", Fixture(status: ready, library: .empty, selection: nil)),
             ("not-installed", Fixture(status: ready, library: library, selection: .game(silentHunter.appID))),
-            ("notice", Fixture(status: ready, library: Library(installed: [lego, specOpsInstalled], notInstalled: [silentHunter]),
-                               selection: .game(specOpsInstalled.appID))),
+            ("not-installed-no-toolkit", Fixture(status: noToolkit, library: library, selection: .game(silentHunter.appID))),
             ("attention", Fixture(status: steamUpdated, library: library, selection: .game(lego.appID))),
             ("sheet", Fixture(status: steamPlayOff, library: library, selection: .engine, isShowingSteamPlaySheet: true)),
             ("update", Fixture(status: ready, library: library, selection: .game(lego.appID), updates: newer)),
@@ -31,6 +50,22 @@ struct Fixture {
             ("steam-moved-none", steamMoved(.upToDate)),
             ("steam-moved-checking", steamMoved(.checking)),
             ("steam-moved-failed", steamMoved(offline)),
+        ]
+    }
+
+    /// The setup window in each state of the toolkit step.
+    static var setupScenarios: [(name: String, fixture: Fixture)] {
+        func setup(_ toolkit: Setup.State) -> Fixture {
+            Fixture(status: toolkit.isDone ? steamPlayOff : noToolkitOff, library: .empty, setup: [
+                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .done("Wine 11.19"), .toolkit: toolkit,
+                .bridge: .done("NotProton 1.2.6"), .steamPlay: .ready,
+            ])
+        }
+        return [
+            ("setup", setupDownloading),
+            ("setup-toolkit", setup(.ready)),
+            ("setup-toolkit-skipped", setup(.skipped("Skipped. Games use DXMT. You can add it later on the Engine page."))),
+            ("setup-toolkit-added", setup(.done("D3DMetal 4.0b3"))),
         ]
     }
 
@@ -62,17 +97,31 @@ struct Fixture {
         .toolkit: .done("D3DMetal 4.0b3"), .bridge: .done("NotProton 1.2.6"), .steamPlay: .done("On"),
     ]
 
-    private static func status(steamPlay: SteamAddon.State = .on, addonLoaded: Bool? = true) -> TanninStatus {
+    private static func status(steamPlay: SteamAddon.State = .on, addonLoaded: Bool? = true, d3dMetal: String? = "4.0b3") -> TanninStatus {
         TanninStatus(
             steamInstalled: true, steamPlay: steamPlay, steamBuild: "1794536281", steamRunning: false,
             steamIsValveSigned: steamPlay == .off, addonLoaded: addonLoaded, updateFreeze: true, engineInstalled: true,
-            engineWine: Pins.engineWine, d3dMetalVersion: "4.0b3", bridgeVersion: Pins.notProtonVersion, runnerProblems: []
+            engineWine: Pins.engineWine, d3dMetalVersion: d3dMetal, bridgeVersion: Pins.notProtonVersion, runnerProblems: []
         )
     }
 
     private static let ready = status()
     private static let steamUpdated = status(addonLoaded: false)
     private static let steamPlayOff = status(steamPlay: .off, addonLoaded: nil)
+    private static let noToolkit = status(d3dMetal: nil)
+    private static let noToolkitOff = status(steamPlay: .off, addonLoaded: nil, d3dMetal: nil)
+
+    /// The game page with a layer chosen by hand, and what the game last ran on.
+    private static func chosen(_ options: String, ran: LayerUsage?) -> Fixture {
+        let game = game(lego.appID, lego.name, install: .installed, size: lego.sizeOnDisk, options: options, is32Bit: false)
+        return Fixture(status: ready, library: Library(installed: [game], notInstalled: [silentHunter, specOps]),
+                       selection: .game(game.appID), layerUsage: ran.map { [game.appID: $0] } ?? [:])
+    }
+
+    private static func thirtyTwoBit(ran: LayerUsage) -> Fixture {
+        Fixture(status: ready, library: Library(installed: [lego, specOpsInstalled], notInstalled: [silentHunter]),
+                selection: .game(specOpsInstalled.appID), layerUsage: [specOpsInstalled.appID: ran])
+    }
 
     private static let newer = UpdateStatus.available(version: "0.2.1")
     private static let offline = UpdateStatus.failed("This Mac appears to be offline.")
@@ -89,7 +138,9 @@ struct Fixture {
     }
 
     private static let lego = game("1544360", "LEGO® Builder's Journey", install: .installed, size: 4_322_970_119,
-                                   options: "D3DM_SUPPORT_DXR=1 D3DM_ENABLE_METALFX=1 D3DM_MAX_FPS=60 %command%", is32Bit: false)
+                                   options: "D3DM_ENABLE_METALFX=1 D3DM_MAX_FPS=60 DXMT_CONFIG=d3d11.preferredMaxFrameRate=60 %command%", is32Bit: false)
+    private static let legoCapped = game("1544360", "LEGO® Builder's Journey", install: .installed, size: 4_322_970_119,
+                                         options: "D3DM_MAX_FPS=60 DXMT_CONFIG=d3d11.preferredMaxFrameRate=60 %command%", is32Bit: false)
     private static let specOps = game("50300", "Spec Ops: The Line", install: .notInstalled)
     private static let specOpsInstalled = game("50300", "Spec Ops: The Line", install: .installed, size: 7_800_000_000, is32Bit: true)
     private static let silentHunter = game("15210", "Silent Hunter III", install: .notInstalled)

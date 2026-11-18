@@ -25,6 +25,12 @@ public struct Paths: Sendable {
     public var gptk: URL { tannin.appending(path: "GPTK") }
     public var kit: URL { tannin.appending(path: "Kit") }
     public var backups: URL { tannin.appending(path: "Backups") }
+    /// Files for the graphics layers that are not the runner's own, one folder per engine.
+    public var layers: URL { tannin.appending(path: "Layers") }
+    /// Present once the user has chosen to go without Apple's toolkit during setup.
+    public var toolkitSkipped: URL { tannin.appending(path: "toolkit-skipped") }
+    /// What Tannin has installed, and from which versions.
+    public var installRecord: URL { tannin.appending(path: "installed.json") }
 
     /// The folder the Steam add-on reads. The name is fixed by the add-on.
     public var notproton: URL { appSupport.appending(path: "notproton") }

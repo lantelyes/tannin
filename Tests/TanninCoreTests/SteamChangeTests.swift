@@ -130,7 +130,8 @@ import Testing
 @Suite struct GameSettingsTests {
     @Test func rendersOnlyWhatIsSet() {
         let settings = GameSettings(rayTracing: true, frameCap: 60)
-        #expect(settings.launchOptions() == "D3DM_SUPPORT_DXR=1 D3DM_MAX_FPS=60 %command%")
+        // On Automatic the cap is written for both layers a game can end up on.
+        #expect(settings.launchOptions() == "D3DM_SUPPORT_DXR=1 D3DM_MAX_FPS=60 DXMT_CONFIG=d3d11.preferredMaxFrameRate=60 %command%")
     }
 
     @Test func keepsTheUsersOwnOptionsAndReplacesTannins() {

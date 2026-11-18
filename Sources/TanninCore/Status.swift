@@ -34,6 +34,11 @@ public struct TanninStatus: Sendable, Equatable {
         self.runnerProblems = runnerProblems
     }
 
+    /// "Wine 11.19, D3DMetal 4.0b3", or with DXMT when Apple's toolkit has not been added.
+    public var stackSummary: String {
+        "Wine \(engineWine), " + (d3dMetalVersion.map { "D3DMetal \($0)" } ?? "DXMT \(LayerStore.dxmtVersion)")
+    }
+
     public enum Headline: Sendable, Equatable {
         case ready
         case steamPlayOff
@@ -47,7 +52,6 @@ public struct TanninStatus: Sendable, Equatable {
         guard steamInstalled else { return .steamMissing }
         var missing = runnerProblems
         if !engineInstalled { missing.insert("Wine engine is not installed", at: 0) }
-        if d3dMetalVersion == nil { missing.append("Game Porting Toolkit has not been imported") }
         if !missing.isEmpty { return .setupIncomplete(missing) }
         switch steamPlay {
         case .off: return .steamPlayOff
