@@ -15,11 +15,15 @@ public enum EngineError: Error, CustomStringConvertible {
 /// The Wine engine: a free build of Wine from CodeWeavers' published CrossOver sources.
 public struct Engine: Sendable {
     public let paths: Paths
+    public let spec: EngineSpec
 
-    public init(paths: Paths = .live) { self.paths = paths }
+    public init(paths: Paths = .live, spec: EngineSpec = .newest) {
+        self.paths = paths
+        self.spec = spec
+    }
 
     /// Where the unpacked, untouched engine lives. Runners are cloned from here.
-    public var root: URL { paths.engines.appending(path: "winecx-\(Pins.engineVersion)") }
+    public var root: URL { paths.engines.appending(path: "winecx-\(spec.version)") }
     public var wine: URL { root.appending(path: "Wine") }
 
     /// Files the Steam add-on's launch script and the bridge patch rely on.
@@ -47,7 +51,7 @@ public struct Engine: Sendable {
     public func install(_ context: WorkContext) throws -> URL {
         if isInstalled { return root }
         let fm = FileManager.default
-        let archive = try Downloader(paths: paths).fetch(Pins.engine, context)
+        let archive = try Downloader(paths: paths).fetch(spec.pin, context)
 
         try fm.createDirectory(at: paths.engines, withIntermediateDirectories: true)
         let staging = paths.engines.appending(path: ".unpack-\(UUID().uuidString)")

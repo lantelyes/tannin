@@ -120,10 +120,8 @@ public struct Setup: Sendable {
     public func importToolkit(from source: URL) throws -> GPTK.Imported {
         let toolkit = try GPTK(paths: paths).importToolkit(from: source)
         try? FileManager.default.removeItem(at: paths.toolkitSkipped)
-        if FileManager.default.fileExists(atPath: Runner(paths: paths).root.appending(path: "lib/wine").path) {
-            try D3DMetalLink(paths: paths).link(toolkit)
-            try? InstallRecord.write(paths: paths)
-        }
+        // Every installed engine's runner gets it: one D3DMetal at a time, for all of them.
+        try EngineStore(paths: paths).linkToolkit(toolkit)
         return toolkit
     }
 
