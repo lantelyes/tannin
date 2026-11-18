@@ -462,3 +462,8 @@ only; no game has been started on it here.
 
 **Not done yet:** any real game. The three test games are not installed (each needs one click in Steam), so
 nothing above has rendered a frame, and frame cap, overlay and the DXMT and DXVK switches are untried.
+- Added the same day: a DXVK variant made the same way (DXVK's two files marked as builtins, Wine's own `dxgi` put
+  back) was built by the launch script, but the probe then hung with no output and had to be stopped. DXVK has so
+  far only worked as native files in a Windows environment. Direct3D 12 under the DXMT variant was not reached.
+- This Mac locks its screen after a short idle time, twice during these tests. A locked screen stops every capture
+  and click; only the user can unlock it.
