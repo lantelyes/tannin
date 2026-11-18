@@ -3,6 +3,20 @@
 Every release, newest first, in plain words. `scripts/release.sh` refuses to make a release that
 has no section here, and the same text becomes the notes shown in the update window.
 
+## 0.7.0 (19 November 2026)
+
+- **The setup window shows the same seven covers for everyone,** in full colour from the start.
+  They no longer begin grey and turn to colour as setup goes: that change was not smooth, and it is
+  gone. Nothing in the row moves or changes while setup runs.
+- **The covers are fetched from Steam** the first time the setup window opens, about 450 KB, and kept
+  on your Mac afterwards. This is the one thing Tannin fetches before you press anything. While they
+  are on their way, each place holds its cover's colours; then all seven come in together. Offline,
+  the colours stay. With Reduce Motion on, the pictures appear without a fade.
+- **The window no longer flashes back to the Set Up button** between downloading the Wine engine and
+  the Steam bridge.
+- **Resume and Try Again start the bar where it stopped,** not from the beginning.
+- The setup window is the same size in every state, with or without Steam and with or without games.
+
 ## 0.6.0 (18 November 2026)
 
 - **Engines & Renderers**, a new page. The Wine engines and the three renderers are two lists that

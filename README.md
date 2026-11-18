@@ -40,10 +40,10 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/setup-dark.png">
-    <img src="docs/screenshots/setup-light.png" width="520" alt="The Set Up Tannin window: covers of Windows games across the top, some in colour, and the Wine engine downloading">
+    <img src="docs/screenshots/setup-light.png" width="520" alt="The Set Up Tannin window: seven game covers across the top, and the Wine engine downloading">
   </picture>
   <br>
-  <sub>Setup is one window. Your own Windows games run across the top and come into colour as it goes. The last step is the only one that changes Steam, and it asks first.</sub>
+  <sub>Setup is one window, with seven covers across the top. The last step is the only one that changes Steam, and it asks first.</sub>
 </p>
 
 | Engines & Renderers | Steam Play |
@@ -162,8 +162,10 @@ signed by Valve, and Tannin checks that signature first. Your games, saves and a
 | D3DMetal (optional) | Apple Game Porting Toolkit 4 | You download it from Apple; Tannin takes D3DMetal out of it and checks Apple's signature |
 | DXMT 0.80, DXVK 1.10.3 | [DXMT](https://github.com/3Shain/dxmt), [DXVK](https://github.com/doitsujin/dxvk) | Part of the Wine engine download |
 | Steam client files | Valve | Downloaded from Valve's servers, SHA-256 pinned |
+| The seven covers in the setup window | Valve's Steam servers | Fetched when the setup window first opens (about 450 KB), then kept on your Mac. Steam's own copy is used when it has one |
 
-Nothing is used before its hash has been checked.
+Nothing is used before its hash has been checked. The seven covers are the one exception: they are
+pictures, only ever shown, and a cover that Valve replaces is shown as it is now.
 
 ## Build it yourself
 
@@ -190,4 +192,5 @@ GPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE), which credits the proj
 including [Sparkle](https://sparkle-project.org), which does the updating.
 
 Tannin is not affiliated with or endorsed by Valve, Apple or CodeWeavers. Steam is a trademark of
-Valve Corporation. Game artwork in the screenshots belongs to its publishers.
+Valve Corporation. Game artwork in the screenshots and in the setup window belongs to its publishers. None of it is
+part of Tannin or of this repository.

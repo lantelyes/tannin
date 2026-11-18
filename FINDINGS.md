@@ -751,3 +751,49 @@ Play…", the refusal by macOS with Open Settings, and the jump to the last scre
 prepared data. Rosetta being installed by the window (this Mac has it). A library too small for the band, on a
 real account. A second Mac.
 
+## 2026-11-19: the setup window's covers are fixed, and what the jank was (0.7.0)
+
+Tried from nothing on this Mac after 0.6.0, the setup window looked janky: "the cover art seems to pop into
+color, it was not smooth". The colour effect is gone, the row is the same seven covers for everyone, and the
+way it loads was picked from a live page of options (1D tinted tiles, 2B fade together) before it was built.
+
+- **Part of the jank was a bug.** Between two setup steps `AppModel.run` cleared the progress before the disk
+  had been read again, so for a moment the window showed what was there before the step: the Set Up button,
+  and the covers back to grey. Progress is now kept until the refresh is done. Resume and Try Again also start
+  from where the bar was.
+- **The seven** (`SetupArt`, core): Metro Exodus, Fallout 4, Red Dead Redemption 2, Horizon Zero Dawn, Death
+  Stranding, DOOM Eternal, Ratchet & Clank: Rift Apart. Each is looked for in Steam's library cache, then in
+  `~/Library/Caches/io.github.lantelyes.Tannin/SetupArt`, then fetched from
+  `shared.steamstatic.com/store_item_assets/steam/apps/<id>/library_600x900.jpg` (second source
+  `cdn.cloudflare.steamstatic.com/steam/apps/<id>/…`). All seven answered on 2026-11-19: 34 to 85 KB each,
+  about 450 KB together. They are not hash-pinned, by decision: a replaced cover is shown as it is. A fetched
+  file is kept only if it is under 2 MB and the system reads it as a picture between 100 and 4096 pixels each
+  way; curl is held to https.
+- **No artwork in the app.** Tannin holds three colours per cover (21 in all), taken once by reducing each
+  cover to two columns of three pixels and averaging the columns. If Valve replaces a cover, its tint is a
+  little off until a Tannin update.
+- **Nothing is fetched for a window nobody opened.** At launch only copies already on the Mac are read. The
+  fetch happens when the setup window appears, and again when Set Up is pressed if the pictures are still
+  missing. On a first run the local copies are read before the window is drawn, so they are there on its
+  first frame.
+- **Seen in the built app, against a home folder in the scratchpad with none of the seven in it** (a copy
+  with no update feed, so the Move to Applications question did not cover the window; the window was recorded
+  on its own with ScreenCaptureKit and read frame by frame):
+  - first open: the tinted tiles for about 0.3 s, then all seven pictures rising over the same frames for
+    about 0.33 s, every tile's values going one way only (no dip), nothing else moving;
+  - second open: the pictures in the first frame that shows the window, no tint;
+  - downloads sent to a dead proxy: the tinted tiles stay, nothing is left in the cache folder, the rest of
+    the window works;
+  - Reduce Motion (the launch argument `-reduceMotion YES` sets it for one process only; the Mac's own setting
+    was not touched): tint, then the pictures in one step;
+  - a whole real setup, the window photographed 1,029 times in a minute: the cover row identical in every
+    one, the window the same size throughout, and the Set Up button never back after it was pressed. Paused
+    at 102 of 175 MB in the Steam bridge; Resume carried on from there (111 MB a second later).
+- **The built tiles match the page.** Light: within a few levels of the page's colours. Dark: the same tile
+  over the real window, which is a little lighter and warmer (#29251F) than the page's (#1E1E1E).
+- 115 tests pass (nine new, for the seven, their colours, where they are looked for, and what a fetch keeps
+  and refuses).
+
+**Not done:** the fade was recorded in dark only, which is how this Mac is set; light was compared in still
+pictures. A first click on Pause did nothing; by the photographs' times it landed as the engine finished and was being
+unpacked, where Pause is dimmed, but that was not looked at more closely. Add Steam Play was not pressed. A second Mac.

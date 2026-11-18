@@ -23,6 +23,13 @@ checks each against a pinned SHA-256, and redistributes none of it:
 
 - Steam client files, from Valve's own download servers. Copyright Valve Corporation.
 
+- Seven game covers, shown across the top of the setup window: Metro Exodus, Fallout 4,
+  Red Dead Redemption 2, Horizon Zero Dawn, Death Stranding, DOOM Eternal and
+  Ratchet & Clank: Rift Apart. Each belongs to its publisher. They are fetched from Steam's
+  public servers when the setup window first opens and kept in the Mac's caches. They are not
+  part of Tannin or of this repository; Tannin itself holds three colours per cover and nothing
+  else of them.
+
 The Tannin app includes one piece of other people's software, unchanged:
 
 - Sparkle (https://sparkle-project.org), which checks for and installs updates to Tannin.
