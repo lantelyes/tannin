@@ -102,9 +102,11 @@ public struct FixedWindow: Sendable {
 
     /// The size the game is set to, or nil when it runs the ordinary way. Reading changes nothing.
     public func size(appID: String) -> Size? {
-        guard let prefix = prefix(appID: appID),
-              let text = try? String(contentsOf: prefix.appending(path: "user.reg"), encoding: .utf8)
-                ?? String(contentsOf: prefix.appending(path: "user.reg"), encoding: .isoLatin1) else { return nil }
+        guard let prefix = prefix(appID: appID) else { return nil }
+        let file = prefix.appending(path: "user.reg")
+        // Wine writes the file as plain text; a name with other bytes in it must not hide the setting.
+        guard let text = (try? String(contentsOf: file, encoding: .utf8))
+                ?? (try? String(contentsOf: file, encoding: .isoLatin1)) else { return nil }
         return Self.size(inRegistry: text)
     }
 

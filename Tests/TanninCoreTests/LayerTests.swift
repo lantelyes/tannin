@@ -557,6 +557,12 @@ private func makeEngines(_ specs: [EngineSpec]) throws -> Paths {
         #expect(calls.all.count == 2)
         try window().set(nil, appID: "10")
         #expect(calls.all.suffix(2) == ["11.17 pfx reg delete", "11.17 pfx reg delete"])
+
+        // A byte elsewhere in the file that is not UTF-8 does not hide the setting.
+        var bytes = Data(Self.registry.replacingOccurrences(of: "\\\\\\\\", with: "\\\\").utf8)
+        bytes.append(contentsOf: [0x22, 0xE9, 0x22, 0x3D, 0x22, 0x31, 0x22, 0x0A])
+        try bytes.write(to: prefix.appending(path: "user.reg"))
+        #expect(window().size(appID: "10") == .usual)
     }
 
     @Test func knowsAStartThatWasRefusedItsScreenSize() {
