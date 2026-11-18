@@ -348,4 +348,8 @@ their feed from `http://localhost:8765/`, served from a scratch folder on this M
 - **Not done yet:** whether the permission to change Steam survives an update (needs setup and Add Steam Play
   first); Sparkle declining to update a copy still running from Downloads (the move was accepted, so that path was
   not taken); anything on a second Mac; anything against the real feed address.
+- **Left on this Mac after the test:** `/Applications/Tannin.app` is test build 0.1.92, which reads its feed from
+  `localhost` only (the test server is stopped, so its checks find nothing). It is replaced when 0.2.0 is
+  installed. `scripts/local-feed.sh <version>` builds, signs and serves a further test version when the Steam
+  permission test is done.
 
