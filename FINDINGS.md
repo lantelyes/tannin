@@ -558,3 +558,21 @@ Differences from the boards, all from what the games showed:
 
 **Not done yet:** playing any of the games past its first screen; a 32-bit Direct3D 11 game; the overlay,
 achievements and cloud saves in a 32-bit game; DXVK's frame cap; anything on a second Mac.
+
+## 2026-11-18: 0.3.0 released, and offered by the live feed
+
+The user ran `scripts/release.sh 0.3.0` (a dry run had passed first; the held website commit was pushed just
+before). Checked from outside afterwards:
+
+- Release `v0.3.0` is on GitHub as a pre-release with `Tannin-0.3.0.zip` (2,348,039 bytes) and its `.sha256`.
+  The file fetched back without signing in hashes to `71189e88…a6d5`, the same as the published `.sha256`.
+- The unzipped app reports 0.3.0, its signature verifies, and its requirement names the same certificate as the
+  0.2.1 in Applications (leaf `9bf3abaf…5fbf`). The update signature in the feed verifies against the download.
+- The live feed shows 0.3.0 with the notes link, the notes page answers, and the website's button reads
+  "Download Tannin 0.3.0". The tests run on GitHub for the release commit passed.
+- **The installed 0.2.1 on this Mac was offered the update.** Tannin › Check for Updates… showed "A new version of
+  Tannin is available! Tannin 0.3.0 is now available, you have 0.2.1" with the five notes, and the sidebar gained
+  its "Update Available / Tannin 0.3.0" row. Installing it was left to the user.
+- Seen on the way: this Mac's runner had already been brought up to 0.3.0, and the old 0.2.1 app reads that as
+  "Setup isn't finished", because 0.2.1 expects the 32-bit ntdll unpatched. It only happens to an old app looking
+  at a newer runner, which needs 0.3.0 to have run first; updating the app clears it.
