@@ -28,7 +28,7 @@
     <p class="sub">On Linux and the Steam Deck, Steam can install and run Windows games. Tannin brings that to Steam for Mac. Free and open source.</p>
     <!-- scripts/release.sh rewrites the next line for each release. -->
     <a class="btn" href="https://github.com/lantelyes/tannin/releases/download/v0.2.1/Tannin-0.2.1.zip">Download Tannin 0.2.1</a>
-    <p class="fine">For Macs with Apple silicon, on macOS 26 or later.<br>This is an early test build: so far, one game on one Mac.</p>
+    <p class="fine">For Macs with Apple silicon, on macOS 26 or later.<br>This is an early test build: so far, three games on one Mac.</p>
   </div>
 
   <div class="wrap">
@@ -44,7 +44,8 @@
       <ol>
         <li>Open the download and drag Tannin into your Applications folder.</li>
         <li>Open Tannin. macOS will say it could not verify it, so open System Settings › Privacy &amp; Security and click Open Anyway. You only do this once.</li>
-        <li>Follow Set Up Tannin. It downloads the Wine engine, asks for Apple’s <a href="https://developer.apple.com/download/all/?q=game%20porting%20toolkit">Game Porting Toolkit</a> (free with an Apple account), and asks before it changes Steam.</li>
+        <li>Follow Set Up Tannin. It downloads the Wine engine and asks before it changes Steam.</li>
+        <li>Optional: add Apple’s <a href="https://developer.apple.com/download/all/?q=game%20porting%20toolkit">Game Porting Toolkit</a> (free with an Apple account). Games that use Direct3D 12 need it.</li>
       </ol>
       <p>Then install a Windows game from your Steam library and press Play, in Steam or in Tannin.</p>
     </section>
@@ -64,7 +65,8 @@
     <section>
       <h2>Known limits</h2>
       <ul>
-        <li>32-bit games start, but without the Steam overlay, achievements or cloud saves.</li>
+        <li>Games that use Direct3D 12 need Apple’s Game Porting Toolkit.</li>
+        <li>Direct3D 9 games run on Wine’s own, slower graphics layer.</li>
         <li>When Steam moves to a build Tannin does not know yet, Steam Play stays off until Tannin catches up. Mac games are not affected.</li>
         <li>Games whose anti-cheat needs Windows kernel drivers do not run.</li>
       </ul>
