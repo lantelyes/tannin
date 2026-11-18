@@ -124,7 +124,10 @@ signed by Valve, and Tannin checks that signature first. Your games, saves and a
 ## Known limits
 
 - **Direct3D 12** games need Apple's Game Porting Toolkit.
-- **Direct3D 9** games run on Wine's own, slower graphics layer, and some old games fail to start.
+- **Direct3D 9** games run on Wine's own, slower graphics layer.
+- **Old games that want a 4:3 screen**, such as 1024 × 768, cannot have it full screen on a Mac whose
+  display has no such mode. From 0.5.0, **Fixed Window** on the game's page runs them in a window of
+  that size instead.
 - **32-bit games** now reach Steam. Their Steam overlay, achievements and cloud saves have not been
   checked yet.
 - **Steam updates.** When Steam moves to a build the Steam bridge does not know yet, Steam Play stays
@@ -153,7 +156,7 @@ swift build
 swift test
 scripts/bundle.sh        # build/Tannin.app
 scripts/package.sh       # dist/Tannin-<version>.zip
-scripts/release.sh 0.4.0 --dry-run   # everything a release does, short of publishing
+scripts/release.sh 0.5.0 --dry-run   # everything a release does, short of publishing
 .build/debug/tannin doctor
 ```
 

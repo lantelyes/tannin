@@ -154,7 +154,7 @@ struct GameCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "game",
         abstract: "How individual games run.",
-        subcommands: [List.self, Use.self, Set.self, Options.self, Wine.self, Restore.self]
+        subcommands: [List.self, Use.self, Set.self, Options.self, Wine.self, Restore.self, Window.self]
     )
 
     struct List: ParsableCommand {
@@ -280,6 +280,35 @@ struct GameCommand: ParsableCommand {
             guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 1544360.") }
             try GameMove().restore(appID: appID)
             print("Put back.")
+        }
+    }
+
+    struct Window: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Show or set the fixed window a game runs in, for old games that need a screen shape this Mac does not have. The game must have been started once and must not be running.")
+
+        @Argument(help: "The game's Steam app ID.") var appID: String
+        @Argument(help: "A size such as 1024x768, or off.") var size: String?
+
+        func run() throws {
+            guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 15210.") }
+            let window = FixedWindow()
+            if let size {
+                if size == "off" {
+                    try window.set(nil, appID: appID)
+                } else {
+                    let parts = size.lowercased().split(separator: "x").compactMap { Int($0) }
+                    guard parts.count == 2, parts.allSatisfy({ $0 >= 320 }) else { throw ValidationError("The size is written like 1024x768, or off.") }
+                    try window.set(FixedWindow.Size(width: parts[0], height: parts[1]), appID: appID)
+                }
+            }
+            guard window.hasEnvironment(appID: appID) else {
+                print("No Windows environment yet. Start the game once first.")
+                return
+            }
+            print(window.size(appID: appID).map { "Fixed window: \($0)" } ?? "Fixed window: off")
+            if GameLogSigns.refusedScreenSize(appID: appID) {
+                print("Its last start was refused the screen size it asked for.")
+            }
         }
     }
 

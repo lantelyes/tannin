@@ -477,3 +477,100 @@ private func makeEngines(_ specs: [EngineSpec]) throws -> Paths {
         #expect(throws: EngineStoreError.self) { try GameMove(paths: paths, steamIsRunning: { false }).move(appID: "10", to: .wine1117) }
     }
 }
+
+@Suite struct FixedWindowTests {
+    private static let registry = """
+        WINE REGISTRY Version 2
+        ;; All keys relative to \\\\User\\\\S-1-5-21-0-0-0-1000
+
+        [Software\\\\Wine\\\\Explorer] 1794994802
+        #time=1dd7740c9445ede
+        "Desktop"="Default"
+
+        [Software\\\\Wine\\\\Explorer\\\\Desktops] 1794994802
+        #time=1dd7740c9445f7e
+        "Default"="1024x768"
+
+        [Software\\\\Wine\\\\Fonts] 1794994800
+        "Codepages"="1252,437"
+        """
+
+    @Test func readsTheSizeFromWinesRegistryText() {
+        #expect(FixedWindow.size(inRegistry: Self.registry) == FixedWindow.Size(width: 1024, height: 768))
+        #expect(FixedWindow.size(inRegistry: Self.registry.replacingOccurrences(of: "1024x768", with: "800x600"))?.description == "800 × 600")
+        // No desktop named, a desktop named that has no size, or nonsense for a size: the game runs the ordinary way.
+        #expect(FixedWindow.size(inRegistry: Self.registry.replacingOccurrences(of: "\"Desktop\"=\"Default\"", with: "")) == nil)
+        #expect(FixedWindow.size(inRegistry: Self.registry.replacingOccurrences(of: "\"Default\"=\"1024x768\"", with: "")) == nil)
+        #expect(FixedWindow.size(inRegistry: Self.registry.replacingOccurrences(of: "1024x768", with: "wide")) == nil)
+        #expect(FixedWindow.size(inRegistry: "") == nil)
+    }
+
+    @Test func offersTheSizesThatFitTheScreen() {
+        // A 14-inch MacBook Pro at its usual setting, less the menu bar.
+        let macBook = FixedWindow.sizes(fittingWidth: 1512, height: 945)
+        #expect(macBook.map(\.description) == ["800 × 600", "1024 × 768", "1152 × 864"])
+        #expect(FixedWindow.sizes(fittingWidth: 2560, height: 1400).count == FixedWindow.sizes.count)
+        // A size that is already set stays in the list even when it no longer fits.
+        let odd = FixedWindow.Size(width: 1600, height: 1200)
+        #expect(FixedWindow.sizes(fittingWidth: 1512, height: 945, including: odd).last == odd)
+        #expect(FixedWindow.sizes(fittingWidth: 1512, height: 945, including: .usual) == macBook)
+    }
+
+    @Test func asksWineForExactlyTheseRegistryChanges() {
+        #expect(FixedWindow.commands(for: .usual) == [
+            ["reg", "add", #"HKCU\Software\Wine\Explorer"#, "/v", "Desktop", "/d", "Default", "/f"],
+            ["reg", "add", #"HKCU\Software\Wine\Explorer\Desktops"#, "/v", "Default", "/d", "1024x768", "/f"],
+        ])
+        #expect(FixedWindow.commands(for: nil).allSatisfy { $0[1] == "delete" && $0.last == "/f" })
+    }
+
+    @Test func setsItOnlyForAGameThatExistsAndIsNotRunning() throws {
+        let paths = try makeEngines([.wine1119, .wine1117])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let calls = Calls()
+        func window(running: Bool = false) -> FixedWindow {
+            FixedWindow(paths: paths, gameIsRunning: { _ in running }, runWine: { engine, prefix, arguments in
+                calls.add("\(engine.wine) \(prefix.lastPathComponent) \(arguments.prefix(2).joined(separator: " "))")
+            })
+        }
+        // Never started: there is nowhere to keep it.
+        #expect(!window().hasEnvironment(appID: "10"))
+        #expect(throws: FixedWindowError.self) { try window().set(.usual, appID: "10") }
+
+        let prefix = paths.steamData.appending(path: "steamapps/compatdata/10/pfx")
+        try FileManager.default.createDirectory(at: prefix, withIntermediateDirectories: true)
+        try "WINE REGISTRY Version 2\n".write(to: prefix.appending(path: "user.reg"), atomically: true, encoding: .utf8)
+        #expect(window().hasEnvironment(appID: "10"))
+        #expect(window().size(appID: "10") == nil)
+        #expect(throws: FixedWindowError.self) { try window(running: true).set(.usual, appID: "10") }
+        #expect(calls.all.isEmpty)
+
+        // Wine is run from the engine the game is on, in the game's own environment.
+        try SteamConfig(paths: paths, steamIsRunning: { false }).setCompatTool(appID: "10", tool: EngineSpec.wine1117.toolName)
+        try window().set(.usual, appID: "10")
+        #expect(calls.all == ["11.17 pfx reg add", "11.17 pfx reg add"])
+
+        // Already as asked: nothing is run.
+        try Self.registry.replacingOccurrences(of: "\\\\\\\\", with: "\\\\").write(to: prefix.appending(path: "user.reg"), atomically: true, encoding: .utf8)
+        #expect(window().size(appID: "10") == .usual)
+        try window().set(.usual, appID: "10")
+        #expect(calls.all.count == 2)
+        try window().set(nil, appID: "10")
+        #expect(calls.all.suffix(2) == ["11.17 pfx reg delete", "11.17 pfx reg delete"])
+    }
+
+    @Test func knowsAStartThatWasRefusedItsScreenSize() {
+        let refused = "012c:err:system:NtUserChangeDisplaySettings Changing L\"\\\\\\\\.\\\\DISPLAY1\" display settings returned -2.\n"
+        #expect(GameLogSigns.refusedScreenSize(wineLog: "msync: up and running.\n" + refused))
+        #expect(!GameLogSigns.refusedScreenSize(wineLog: "msync: up and running.\ninfo:  Using feature level D3D_FEATURE_LEVEL_11_0\n"))
+        #expect(!GameLogSigns.refusedScreenSize(appID: "none", paths: Paths(home: FileManager.default.temporaryDirectory.appending(path: "tannin-none"))))
+    }
+}
+
+/// Collects what a test's stand-in for Wine was asked to do.
+private final class Calls: @unchecked Sendable {
+    private let lock = NSLock()
+    private var items: [String] = []
+    func add(_ item: String) { lock.withLock { items.append(item) } }
+    var all: [String] { lock.withLock { items } }
+}

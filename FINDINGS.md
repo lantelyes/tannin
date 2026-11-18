@@ -628,3 +628,27 @@ in the app; Steam was quit and reopened by the app each time it had to be.
 This Mac is back to one engine (Wine 11.19) and the copies made by these tests were removed.
 
 **Not done yet:** a 32-bit game or DXMT/DXVK started on 11.17; any of this on a second Mac.
+
+## 2026-11-18: why Silent Hunter III stopped, and the Fixed Window setting (branch `fixed-window`, for 0.5.0)
+
+- **The cause.** The game asks for a 1024 × 768 screen. A small test program on the same Wine listed 132 modes on
+  this MacBook, every one in the display's own wide shapes (1024 × 640, 1024 × 665, 1280 × 800 and so on); 1024 × 768
+  is not among them and asking for it returns -2, the same refusal as in the game's log
+  (`NtUserChangeDisplaySettings … display settings returned -2`). The game then shows "Can not initialize 3D
+  engine".
+- **The remedy.** Inside a Wine virtual desktop of 1024 × 768 the same program was offered that size and the
+  request was accepted. With the virtual desktop set in the game's Windows environment (`HKCU\Software\Wine\
+  Explorer`, `Desktop`, and `…\Explorer\Desktops`) and the game started from Steam, it showed its loading screen
+  and then its main menu, drawn by Wine's own Direct3D 9 layer. Not played further.
+- **Where it has to live.** The add-on's plugins can set variables, DLL overrides and files, not registry values,
+  and Wine reads this from the registry only. So it is the one setting kept in a game's Windows environment
+  instead of its Steam launch options, and a game needs to have been started once before it can be set.
+- **Built** as the user picked from the canvas page "Fixed Window" ("All recommended"): a pop-up row under
+  Advanced named Fixed Window; dimmed with the reason for a game never started or running; saved with Save
+  Changes, without quitting Steam when nothing else changed; and a notice with "Use 1024 × 768" when the game's
+  log shows the refusal. `tannin game window <app id> [1024x768|off]` does the same from the command line.
+  Tannin writes it by running Wine's own `reg` in the game's environment, from the engine the game is on.
+- The new code reads the setting made by hand on Silent Hunter III as "1024 × 768". 91 tests pass.
+
+**Not done yet:** the screens photographed and compared with the boards, and the row and the notice pressed in
+the app on the real game (the screen was locked while this was built); any other game that needs it.
