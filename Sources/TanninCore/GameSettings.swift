@@ -245,10 +245,10 @@ public enum GamePreset: String, Sendable, CaseIterable, Identifiable {
         case .bestSpeed:
             switch effective {
             case .d3dMetal: return GameSettings(layer: layer, metalFX: true)
-            case .dxvk: return GameSettings(layer: layer, backgroundEffects: true)
-            // DXMT has nothing that buys speed: its upscaling enlarges the picture, it does not draw less
-            // (seen with LEGO Builder's Journey, 2026-11-18).
-            case .dxmt, .automatic, nil: return nil
+            // Only D3DMetal has a setting that buys speed. DXMT's upscaling enlarges the picture, it does not
+            // draw less (seen with LEGO Builder's Journey, 2026-11-18), and DXVK's background preparing makes
+            // a game smoother, not faster, so it is left as a switch of its own (decided 2026-11-18).
+            case .dxmt, .dxvk, .automatic, nil: return nil
             }
         case .bestBattery:
             return GameSettings(layer: layer, frameCap: 30)

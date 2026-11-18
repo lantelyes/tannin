@@ -533,7 +533,8 @@ What this showed, and what was changed because of it:
   game in front and the same scene on each layer.
 - **DXMT's upscaling is not what the board said.** It does not draw the game smaller. The game draws at the size it
   chose and DXMT enlarges that picture with MetalFX (1512×982 to 3024×1964 at 2×). The row's caption now says
-  so, and "Best speed" is not offered on DXMT, since nothing there buys speed.
+  so, and "Best speed" is not offered on DXMT, since nothing there buys speed. The user agreed, and chose the
+  same for DXVK: its background preparing stays a switch of its own, so "Best speed" is offered on D3DMetal only.
 - **Which layer ran.** DXMT and DXVK each write lines of their own into the game's Wine log (`info:  Using feature
   level …`, `info:  DXVK: v…`), with no extra tracing. D3DMetal writes none; it is named only for a 64-bit game on
   the plain runner whose log has Apple's upscaler line (`com.apple.appleneuralengine`), which the DXMT and DXVK
@@ -550,7 +551,7 @@ launch options, the skippable toolkit step, `installed.json`, the after-update s
 "Decided" boards.
 
 Differences from the boards, all from what the games showed:
-- The Upscaling caption (above), and no "Best speed" on DXMT.
+- The Upscaling caption (above), and no "Best speed" on DXMT or DXVK.
 - The 32-bit notice on a game's page is gone, and the Steam Bridge row says "Lets games talk to Steam".
 - The after-update row also mentions the Steam bridge for 32-bit games, because the same step adds it.
 - "It ran on D3DMetal last time" appears only when the log supports it; a Direct3D 9 game is rarely recognised.
