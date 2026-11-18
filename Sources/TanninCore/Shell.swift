@@ -20,26 +20,41 @@ public struct ShellError: Error, CustomStringConvertible {
 /// Runs programs with an argument array. Nothing here ever goes through a shell,
 /// so no value can be interpreted as shell syntax.
 public enum Shell {
+    /// `Process` is safe to stop from another thread; this lets a cancellation handler hold on to one.
+    private struct Running: @unchecked Sendable {
+        let process: Process
+    }
+
     /// Runs a program and captures its output.
     /// - Parameter inherit: when true the child writes straight to this process's terminal
     ///   (used for progress bars) and nothing is captured.
+    /// - Parameter cancellation: when cancelled, the program is told to stop and `Cancelled` is thrown.
     @discardableResult
     public static func run(
         _ executable: String,
         _ arguments: [String] = [],
         environment: [String: String]? = nil,
         cwd: URL? = nil,
-        inherit: Bool = false
+        inherit: Bool = false,
+        cancellation: Cancellation? = nil
     ) throws -> ShellResult {
+        try cancellation?.check()
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         if let environment { process.environment = environment }
         if let cwd { process.currentDirectoryURL = cwd }
 
+        let running = Running(process: process)
+        func stopOnCancel() {
+            cancellation?.onCancel { if running.process.isRunning { running.process.terminate() } }
+        }
+
         if inherit {
             try process.run()
+            stopOnCancel()
             process.waitUntilExit()
+            try cancellation?.check()
             return ShellResult(status: process.terminationStatus, stdout: "", stderr: "")
         }
 
@@ -57,8 +72,10 @@ public enum Shell {
         process.standardInput = FileHandle.nullDevice
 
         try process.run()
+        stopOnCancel()
         let outData = try outPipe.fileHandleForReading.readToEnd() ?? Data()
         process.waitUntilExit()
+        try cancellation?.check()
         let errData = (try? Data(contentsOf: errURL)) ?? Data()
 
         return ShellResult(
@@ -75,9 +92,10 @@ public enum Shell {
         _ arguments: [String] = [],
         environment: [String: String]? = nil,
         cwd: URL? = nil,
-        inherit: Bool = false
+        inherit: Bool = false,
+        cancellation: Cancellation? = nil
     ) throws -> ShellResult {
-        let result = try run(executable, arguments, environment: environment, cwd: cwd, inherit: inherit)
+        let result = try run(executable, arguments, environment: environment, cwd: cwd, inherit: inherit, cancellation: cancellation)
         guard result.ok else {
             throw ShellError(
                 command: ([executable] + arguments).joined(separator: " "),

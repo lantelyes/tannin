@@ -39,9 +39,15 @@ public struct Engine: Sendable {
     /// Downloads (if needed), verifies and unpacks the engine. Safe to run again.
     @discardableResult
     public func install(quiet: Bool = false) throws -> URL {
+        try install(WorkContext(quiet: quiet))
+    }
+
+    /// Downloads (if needed), verifies and unpacks the engine. Safe to run again, and to cancel and run again.
+    @discardableResult
+    public func install(_ context: WorkContext) throws -> URL {
         if isInstalled { return root }
         let fm = FileManager.default
-        let archive = try Downloader(paths: paths).fetch(Pins.engine, quiet: quiet)
+        let archive = try Downloader(paths: paths).fetch(Pins.engine, context)
 
         try fm.createDirectory(at: paths.engines, withIntermediateDirectories: true)
         let staging = paths.engines.appending(path: ".unpack-\(UUID().uuidString)")
@@ -49,7 +55,7 @@ public struct Engine: Sendable {
         defer { try? fm.removeItem(at: staging) }
 
         // bsdtar refuses absolute paths and ".." by default, so the archive cannot write outside `staging`.
-        try Shell.check("/usr/bin/tar", ["-xzf", archive.path, "-C", staging.path])
+        try Shell.check("/usr/bin/tar", ["-xzf", archive.path, "-C", staging.path], cancellation: context.cancellation)
 
         let unpacked = staging.appending(path: "Libraries")
         for file in Self.requiredFiles {

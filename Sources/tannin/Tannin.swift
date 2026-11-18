@@ -8,7 +8,7 @@ struct Tannin: ParsableCommand {
         commandName: "tannin",
         abstract: "Free Steam Play for Mac: Windows games from the native Steam client.",
         version: "0.1.0",
-        subcommands: [DoctorCommand.self, EngineCommand.self, GPTKCommand.self, KitCommand.self, RunnerCommand.self, SteamCommand.self, GameCommand.self]
+        subcommands: [DoctorCommand.self, SetupCommand.self, EngineCommand.self, GPTKCommand.self, KitCommand.self, RunnerCommand.self, SteamCommand.self, GameCommand.self]
     )
 }
 
@@ -248,8 +248,7 @@ struct RunnerCommand: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Assemble the runner from the engine, the patched ntdll and the bridge. Does not touch Steam.")
 
         func run() throws {
-            let patch = NtdllPatch(repository: try NtdllPatch.locateRepository())
-            try Runner().build(patch: patch)
+            try Runner().build(patch: NtdllPatch())
             // A rebuild starts from a fresh copy of the engine, so put the imported D3DMetal back in.
             if let toolkit = try? GPTK().current() {
                 try D3DMetalLink().link(toolkit)
@@ -356,5 +355,23 @@ struct DoctorCommand: ParsableCommand {
 
     func run() throws {
         if !printChecks(Doctor().run(probeSteam: probeSteam)) { throw ExitCode(1) }
+    }
+}
+
+struct SetupCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "setup",
+        abstract: "Show the setup steps the app walks through and which are done. Changes nothing."
+    )
+
+    func run() throws {
+        for (step, state) in Setup().states() {
+            let text = switch state {
+            case let .done(detail): "done     \(detail)"
+            case .ready: "to do"
+            case let .waiting(reason): "waiting  \(reason)"
+            }
+            print("\(step.rawValue.padding(toLength: 11, withPad: " ", startingAt: 0))\(text)")
+        }
     }
 }

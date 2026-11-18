@@ -10,18 +10,13 @@ public struct NtdllPin: Sendable, Equatable {
 }
 
 public enum NtdllPatchError: Error, CustomStringConvertible {
-    case toolsNotFound
     case unknownEngine(arch: String, sha256: String)
-    case detourMismatch(String)
     case resultMismatch(arch: String, expected: String, actual: String)
 
     public var description: String {
         switch self {
-        case .toolsNotFound:
-            return "Could not find Tools/ntdll-patch and .venv. Run tannin from the repository, or set TANNIN_REPO."
         case let .unknownEngine(arch, sha256):
             return "The engine's \(arch) ntdll (\(sha256)) is not a build Tannin has a patch for."
-        case let .detourMismatch(file): return "\(file) does not match its pinned SHA-256."
         case let .resultMismatch(arch, expected, actual):
             return "The patched \(arch) ntdll is \(actual), expected \(expected). Nothing was installed."
         }
@@ -30,10 +25,9 @@ public enum NtdllPatchError: Error, CustomStringConvertible {
 
 /// Makes the copy of ntdll that hands a game's Steam client calls to the Steam bridge.
 /// The detours were derived on 2026-11-17 with NotProton's tools (see Tools/ntdll-patch/UPSTREAM.md)
-/// and Homebrew mingw-w64 (GCC 16.2.0).
+/// and Homebrew mingw-w64 (GCC 16.2.0). At run time the patch is applied from `NtdllRecipe`, in Swift.
 public struct NtdllPatch: Sendable {
     public let paths: Paths
-    public let repository: URL
 
     public static let pins: [NtdllPin] = [
         NtdllPin(arch: "x86_64",
@@ -48,66 +42,35 @@ public struct NtdllPatch: Sendable {
                  patchedSHA256: "712c793eee2671fa63634d027dfe76017ab8ef3290aa14bebf67477b4cc76475"),
     ]
 
-    public init(paths: Paths = .live, repository: URL) {
+    public init(paths: Paths = .live) {
         self.paths = paths
-        self.repository = repository
     }
-
-    /// Finds the repository holding the patch tools: TANNIN_REPO, then upward from the working folder and the executable.
-    public static func locateRepository() throws -> URL {
-        let fm = FileManager.default
-        var starts: [URL] = []
-        if let env = ProcessInfo.processInfo.environment["TANNIN_REPO"] { starts.append(URL(fileURLWithPath: env)) }
-        starts.append(URL(fileURLWithPath: fm.currentDirectoryPath))
-        if let exe = Bundle.main.executableURL { starts.append(exe.deletingLastPathComponent()) }
-        for start in starts {
-            var dir = start.standardizedFileURL
-            for _ in 0..<8 {
-                if fm.fileExists(atPath: dir.appending(path: "Tools/ntdll-patch/apply.py").path) { return dir }
-                dir = dir.deletingLastPathComponent()
-            }
-        }
-        throw NtdllPatchError.toolsNotFound
-    }
-
-    var tools: URL { repository.appending(path: "Tools/ntdll-patch") }
-    var python: URL { repository.appending(path: ".venv/bin/python") }
 
     public func output(arch: String) -> URL {
         paths.engines.appending(path: "patched-\(Pins.engineVersion)/\(arch)-windows/ntdll.dll")
     }
 
-    /// Returns a verified patched ntdll for this architecture, building it if needed.
+    /// Returns a verified patched ntdll for this architecture, making it if needed.
     public func patched(arch: String) throws -> URL {
         let fm = FileManager.default
-        let engine = Engine(paths: paths)
-        let clean = engine.wine.appending(path: "lib/wine/\(arch)-windows/ntdll.dll")
+        let clean = Engine(paths: paths).wine.appending(path: "lib/wine/\(arch)-windows/ntdll.dll")
         let cleanHash = try Hashing.sha256(of: clean)
-        guard let pin = Self.pins.first(where: { $0.arch == arch && $0.cleanSHA256 == cleanHash }) else {
+        guard let recipe = NtdllRecipe.all.first(where: { $0.arch == arch && $0.cleanSHA256 == cleanHash }) else {
             throw NtdllPatchError.unknownEngine(arch: arch, sha256: cleanHash)
         }
 
         let out = output(arch: arch)
-        if fm.fileExists(atPath: out.path), try Hashing.sha256(of: out) == pin.patchedSHA256 { return out }
-
-        let detour = tools.appending(path: "prebuilt/\(pin.detourFile)")
-        guard fm.fileExists(atPath: detour.path), fm.fileExists(atPath: python.path) else {
-            throw NtdllPatchError.toolsNotFound
-        }
-        guard try Hashing.sha256(of: detour) == pin.detourSHA256 else {
-            throw NtdllPatchError.detourMismatch(pin.detourFile)
-        }
+        if fm.fileExists(atPath: out.path), try Hashing.sha256(of: out) == recipe.patchedSHA256 { return out }
 
         try fm.createDirectory(at: out.deletingLastPathComponent(), withIntermediateDirectories: true)
         let temporary = out.appendingPathExtension("tmp")
         try? fm.removeItem(at: temporary)
-        // -I: isolated mode, so nothing in the environment or the working folder can change what Python loads.
-        try Shell.check(python.path, ["-I", tools.appending(path: "apply.py").path, clean.path, temporary.path, detour.path])
+        try recipe.apply(to: try Data(contentsOf: clean)).write(to: temporary)
 
         let actual = try Hashing.sha256(of: temporary)
-        guard actual == pin.patchedSHA256 else {
+        guard actual == recipe.patchedSHA256 else {
             try? fm.removeItem(at: temporary)
-            throw NtdllPatchError.resultMismatch(arch: arch, expected: pin.patchedSHA256, actual: actual)
+            throw NtdllPatchError.resultMismatch(arch: arch, expected: recipe.patchedSHA256, actual: actual)
         }
         try? fm.removeItem(at: out)
         try fm.moveItem(at: temporary, to: out)

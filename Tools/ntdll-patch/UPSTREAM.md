@@ -14,3 +14,9 @@ The detour makes a game's `steamclient64.dll` hand its calls to the Steam bridge
 
 They need `python3` with `capstone`, and Homebrew `mingw-w64`. Build outputs go next to the sources and are
 ignored by git.
+
+## Tannin's own addition
+
+`make-recipe.py` is Tannin's (GPL-3.0). It compares a clean ntdll with the copy `apply.py` produced and prints the
+differing bytes as Swift source for `Sources/TanninCore/NtdllRecipe.swift`. The app and the CLI apply that recipe
+themselves, so the Python tools are only needed when deriving a patch for a new engine.

@@ -37,6 +37,37 @@ public enum DownloadError: Error, CustomStringConvertible {
 }
 
 /// Downloads pinned files. A file is only ever returned after its SHA-256 matches the pin.
+/// How far a download has got.
+public struct DownloadProgress: Sendable, Equatable {
+    public let name: String
+    public let received: Int64
+    /// Nil when the pin does not state a size.
+    public let total: Int64?
+    /// True once the bytes are all here and the file is being checked against its hash.
+    public let isVerifying: Bool
+
+    public var fraction: Double? {
+        guard let total, total > 0 else { return nil }
+        return min(1, Double(received) / Double(total))
+    }
+}
+
+/// What a long step reports back while it works, and how it is stopped.
+public struct WorkContext: Sendable {
+    public var quiet: Bool
+    public var progress: (@Sendable (DownloadProgress) -> Void)?
+    public var cancellation: Cancellation?
+
+    public init(quiet: Bool = false, progress: (@Sendable (DownloadProgress) -> Void)? = nil, cancellation: Cancellation? = nil) {
+        self.quiet = quiet
+        self.progress = progress
+        self.cancellation = cancellation
+    }
+
+    /// For the command line: curl draws its own progress bar.
+    public static let terminal = WorkContext()
+}
+
 public struct Downloader: Sendable {
     public let paths: Paths
 
@@ -46,6 +77,15 @@ public struct Downloader: Sendable {
 
     /// Returns the verified local copy, downloading (and resuming) as needed.
     public func fetch(_ pin: Pin, quiet: Bool = false) throws -> URL {
+        try fetch(pin, WorkContext(quiet: quiet))
+    }
+
+    /// Returns the verified local copy, downloading (and resuming) as needed.
+    ///
+    /// With a progress callback, curl runs silently and the size of the partial file is reported a few times a
+    /// second. Cancelling stops curl and throws `Cancelled`; the partial file stays, so the next call resumes it.
+    public func fetch(_ pin: Pin, _ context: WorkContext) throws -> URL {
+        let quiet = context.quiet || context.progress != nil
         let fm = FileManager.default
         try fm.createDirectory(at: paths.downloads, withIntermediateDirectories: true)
         let final = destination(for: pin)
@@ -63,7 +103,9 @@ public struct Downloader: Sendable {
             arguments.append(quiet ? "--silent" : "--progress-bar")
             arguments.append("--show-error")
             arguments.append(url)
-            let result = try Shell.run("/usr/bin/curl", arguments, inherit: !quiet)
+            let watcher = context.progress.map { ProgressWatcher(file: partial, pin: pin, report: $0) }
+            defer { watcher?.stop() }
+            let result = try Shell.run("/usr/bin/curl", arguments, inherit: !quiet, cancellation: context.cancellation)
             if result.ok {
                 downloaded = true
                 break
@@ -72,6 +114,8 @@ public struct Downloader: Sendable {
         }
         guard downloaded else { throw DownloadError.allSourcesFailed(name: pin.name, lastError: lastError) }
 
+        let size = Hashing.fileSize(partial) ?? 0
+        context.progress?(DownloadProgress(name: pin.name, received: size, total: pin.size, isVerifying: true))
         try verify(partial, against: pin)
         try fm.moveItem(at: partial, to: final)
         return final
@@ -88,5 +132,24 @@ public struct Downloader: Sendable {
             try? FileManager.default.removeItem(at: file)
             throw DownloadError.wrongHash(name: pin.name, expected: pin.sha256, actual: actual)
         }
+    }
+}
+
+/// Reports the growing size of a partial download until stopped.
+private final class ProgressWatcher: @unchecked Sendable {
+    private let timer: DispatchSourceTimer
+
+    init(file: URL, pin: Pin, report: @escaping @Sendable (DownloadProgress) -> Void) {
+        timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        timer.schedule(deadline: .now(), repeating: .milliseconds(250))
+        timer.setEventHandler {
+            let received = Hashing.fileSize(file) ?? 0
+            report(DownloadProgress(name: pin.name, received: received, total: pin.size, isVerifying: false))
+        }
+        timer.resume()
+    }
+
+    func stop() {
+        timer.cancel()
     }
 }

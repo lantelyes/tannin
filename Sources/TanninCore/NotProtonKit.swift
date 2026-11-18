@@ -42,9 +42,13 @@ public struct NotProtonKit: Sendable {
 
     /// Downloads and unpacks the pinned NotProton release into Tannin's own folder.
     public func unpack(quiet: Bool = false) throws {
+        try unpack(WorkContext(quiet: quiet))
+    }
+
+    public func unpack(_ context: WorkContext) throws {
         if isUnpacked { return }
         let fm = FileManager.default
-        let zip = try Downloader(paths: paths).fetch(Pins.notProton, quiet: quiet)
+        let zip = try Downloader(paths: paths).fetch(Pins.notProton, context)
         let staging = paths.kit.appending(path: ".unpack-\(UUID().uuidString)")
         try fm.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: staging) }
@@ -106,11 +110,15 @@ public struct NotProtonKit: Sendable {
 
     /// Downloads Valve's packages from Valve's servers and places the pinned files in the bridge folder.
     public func installValveFiles(quiet: Bool = false) throws {
+        try installValveFiles(WorkContext(quiet: quiet))
+    }
+
+    public func installValveFiles(_ context: WorkContext) throws {
         let fm = FileManager.default
         let downloader = Downloader(paths: paths)
         let packages = [
-            "linux": try downloader.fetch(Pins.valveLinux, quiet: quiet),
-            "win64": try downloader.fetch(Pins.valveWin64, quiet: quiet),
+            "linux": try downloader.fetch(Pins.valveLinux, context),
+            "win64": try downloader.fetch(Pins.valveWin64, context),
         ]
         let staging = paths.kit.appending(path: ".valve-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: staging) }
