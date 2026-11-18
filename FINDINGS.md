@@ -650,5 +650,28 @@ This Mac is back to one engine (Wine 11.19) and the copies made by these tests w
   Tannin writes it by running Wine's own `reg` in the game's environment, from the engine the game is on.
 - The new code reads the setting made by hand on Silent Hunter III as "1024 × 768". 91 tests pass.
 
-**Not done yet:** the screens photographed and compared with the boards, and the row and the notice pressed in
-the app on the real game (the screen was locked while this was built); any other game that needs it.
+**Not done yet:** see the next section.
+
+## 2026-11-18: 0.4.0 released; Fixed Window merged and tried on the real game
+
+- **0.4.0** was published with `scripts/release.sh 0.4.0 --confirm 0.4.0`, the first release made without the
+  typed "yes" (the user's go-ahead was given in the conversation beforehand). Checked from outside: the
+  download's hash matches the published one, the app in it is 0.4.0 with a valid signature from the same
+  certificate, the live feed's update signature verifies against the download, and the website's button names
+  0.4.0.
+- **Fixed Window through Tannin's own code, on Silent Hunter III.** `tannin game window 15210` read the setting
+  made by hand as 1024 × 768. `off`, `800x600` and `1024x768` each changed the two registry values in the
+  game's environment and read back correctly; each change took about 11 seconds, nearly all of it Wine starting
+  and writing its registry. Started from Steam afterwards, the game opened its window and its log had no
+  refused screen size. While it ran, a change was refused with "The game is running. Quit it first, then try
+  again." and the setting stayed as it was.
+- **The screens.** The Mac's screen was locked, and the system's window capture gives nothing then. The
+  snapshot aid gained `TANNIN_SNAPSHOT_DRAW=1`, with which the app draws its windows into the pictures itself
+  (glass and materials come out flat), and `TANNIN_SNAPSHOT_ONLY=<start of a scenario name>`. The five Fixed
+  Window states were drawn that way in light and dark and read against boards W01 to W05: the row sits under
+  Performance Overlay with its caption, the two dimmed states carry their reasons, and the notice has its
+  "Use 1024 × 768" button.
+
+**Not done yet:** the row and the notice pressed in the running app on the real game, and the screens seen with
+their real glass (both need the screen unlocked); how the game's window was drawn in this last run (it could not
+be captured); any other game that needs a fixed window.

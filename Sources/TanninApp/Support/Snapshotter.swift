@@ -26,7 +26,7 @@ enum Snapshotter {
             await model.showLiveData()
             await capture(WindowID.main, to: folder.appending(path: "live-\(name).png"))
 
-            for scenario in Fixture.mainWindowScenarios {
+            for scenario in Fixture.mainWindowScenarios where only.map({ scenario.name.hasPrefix($0) }) ?? true {
                 model.show(scenario.fixture)
                 updates.show(scenario.fixture.updates)
                 let isSheet = scenario.fixture.isShowingSteamPlaySheet
@@ -37,8 +37,9 @@ enum Snapshotter {
                 }
             }
 
-            captureQuestion(to: folder.appending(path: "move-\(name).png"))
+            if only == nil, !drawsItself { captureQuestion(to: folder.appending(path: "move-\(name).png")) }
         }
+        if only != nil { return NSApp.terminate(nil) }
 
         openSettings()
         for (name, appearance) in appearances {
@@ -61,6 +62,9 @@ enum Snapshotter {
         }
         NSApp.terminate(nil)
     }
+
+    /// TANNIN_SNAPSHOT_ONLY=game-fixed photographs only the main window's scenarios whose names start that way.
+    private static var only: String? { ProcessInfo.processInfo.environment["TANNIN_SNAPSHOT_ONLY"] }
 
     /// The name SwiftUI gives the window of a `Settings` scene.
     private static let settingsWindowID = "com_apple_SwiftUI_Settings_window"
@@ -101,9 +105,22 @@ enum Snapshotter {
         await screenshot(window, to: file)
     }
 
+    /// With TANNIN_SNAPSHOT_DRAW=1 the app draws its windows into the pictures itself. The system's capture
+    /// gives nothing while the screen is locked; this still works then, at the cost of glass and materials,
+    /// which come out flat. Good for checking layout and wording, not for comparing looks.
+    private static var drawsItself: Bool { ProcessInfo.processInfo.environment["TANNIN_SNAPSHOT_DRAW"] == "1" }
+
+    private static func draw(_ window: NSWindow, to file: URL) {
+        guard let view = window.contentView?.superview ?? window.contentView,
+              let picture = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: picture)
+        try? picture.representation(using: .png, properties: [:])?.write(to: file)
+    }
+
     /// The system's own window capture, so glass, materials and the toolbar come out as they look on screen.
     /// A sheet is part of its parent window's picture.
     private static func screenshot(_ window: NSWindow, to file: URL) async {
+        if drawsItself { return draw(window, to: file) }
         let number = String(window.windowNumber)
         let path = file.path
         _ = await Task.detached {
