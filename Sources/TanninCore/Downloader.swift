@@ -13,9 +13,13 @@ public enum Hashing {
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
+    /// The file's size as it is on disk right now.
+    ///
+    /// Asked of the file system each time. `URL.resourceValues` remembers its answer on the URL value, so a download
+    /// watched through one URL appeared to stop growing, and a finished download was then judged too short.
     public static func fileSize(_ url: URL) -> Int64? {
-        let values = try? url.resourceValues(forKeys: [.fileSizeKey])
-        return values?.fileSize.map(Int64.init)
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        return (attributes?[.size] as? NSNumber)?.int64Value
     }
 }
 

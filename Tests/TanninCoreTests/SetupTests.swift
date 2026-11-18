@@ -79,6 +79,17 @@ final class ProgressLog: @unchecked Sendable {
         #expect(last.fraction == 1)
     }
 
+    @Test func theSizeOfAGrowingFileIsReadFreshEachTime() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "tannin-size-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try Data(count: 10).write(to: file)
+        #expect(Hashing.fileSize(file) == 10)
+        // The same URL value is asked again after the file has grown, as the download watcher does.
+        try Data(count: 5000).write(to: file)
+        #expect(Hashing.fileSize(file) == 5000)
+        #expect(Hashing.fileSize(file.appendingPathExtension("missing")) == nil)
+    }
+
     @Test func picksUpAPartialFileWhereItStopped() throws {
         let (home, source, pin) = try makeSource(bytes: 2_000_000)
         defer { try? FileManager.default.removeItem(at: home) }

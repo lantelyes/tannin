@@ -225,3 +225,18 @@ design canvas: a blue six-sided tile with a play triangle on a light tile. `scri
 bar item now uses the same mark as a template image (`MenuBarGlyph.swift`); it has not been looked at in the real
 menu bar. The Dark and Tinted appearances on the canvas are not built: they need a layered Icon Composer file,
 which is a manual step. With the `.icns` alone, macOS shows the default appearance.
+
+## 2026-11-18: setup run from nothing, and a release zip
+
+- **Setup from a bare home folder now passes as a test** (`TANNIN_E2E_SETUP=1 swift test --filter SetupFromScratch`):
+  engine unpacked, NotProton release downloaded from GitHub with progress, Valve files placed, ntdll patched from the
+  Swift recipe, runner built and verified, D3DMetal imported and linked. It runs in a temporary home and never
+  touches Steam. The engine archive and Valve's packages were borrowed from this Mac's download folder, so the
+  479 MB engine download itself was not repeated; the last step, adding Steam Play, is not part of it.
+- **A bug that test found:** `Hashing.fileSize` read the size through `URL.resourceValues`, which remembers its answer
+  on the URL value. With download progress switched on (the app's path, never the CLI's), a finished 73 MB download
+  was measured at a stale 160 to 300 KB, called too short and deleted. Setup from the app could not have got past
+  the Steam bridge step. Fixed by asking the file system each time; there is a test for it.
+- **Release zip:** `scripts/package.sh` makes `dist/Tannin-0.1.0.zip` (about 1 MB, arm64 only, no bundled libraries).
+  The unzipped app's signature verifies. It is ad-hoc signed: this Mac has no Developer ID certificate, so anyone who
+  downloads it has to choose Open Anyway in System Settings once. Not tried on a second Mac.
