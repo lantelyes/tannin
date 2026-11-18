@@ -10,6 +10,14 @@ public struct LogLine: Sendable, Equatable, Identifiable {
     public let level: Level
     public let source: String
     public let message: String
+
+    public init(id: Int, time: String, level: Level, source: String, message: String) {
+        self.id = id
+        self.time = time
+        self.level = level
+        self.source = source
+        self.message = message
+    }
 }
 
 /// Reads the Steam add-on's log. It is the only place that says whether the add-on loaded.

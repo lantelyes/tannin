@@ -2,13 +2,14 @@ import AppKit
 import SwiftUI
 import TanninCore
 
+/// The Steam add-on's log, newest first: the only place that says whether Steam Play loaded and why not.
 struct LogsView: View {
     @Environment(AppModel.self) private var model
     @State private var filter = LogFilter.all
     @State private var search = ""
+    @State private var selection: LogLine.ID?
     @State private var didCopy = false
 
-    /// Newest first, so the latest Steam start is at the top without scrolling.
     private var lines: [LogLine] {
         model.logLines.reversed().filter { line in
             filter.includes(line)
@@ -17,29 +18,46 @@ struct LogsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let lines = lines
+        Group {
             if lines.isEmpty {
                 ContentUnavailableView {
-                    Label(model.logLines.isEmpty ? "Nothing logged yet" : "No matching lines", systemImage: "doc.text")
+                    Label(model.logLines.isEmpty ? "Nothing Logged Yet" : "No Matching Lines", systemImage: "doc.text")
                 } description: {
                     Text(model.logLines.isEmpty
                         ? "The log fills in once Steam has started with Steam Play on."
                         : "Try a different filter or search.")
                 }
-                .frame(maxHeight: .infinity)
             } else {
-                List(lines) { line in
-                    LogRow(line: line)
-                        .listRowSeparatorTint(Theme.line)
+                Table(lines, selection: $selection) {
+                    TableColumn("Time") { line in
+                        Text(line.time).monospacedDigit()
+                    }
+                    .width(min: 60, ideal: 70, max: 90)
+                    TableColumn("Source") { line in
+                        Text(line.source)
+                    }
+                    .width(min: 80, ideal: 120, max: 180)
+                    TableColumn("Message") { line in
+                        HStack(spacing: 5) {
+                            if line.level == .warning { StatusSymbol.warning.image }
+                            if line.level == .error {
+                                Image(systemName: "xmark.octagon.fill")
+                                    .foregroundStyle(.red)
+                                    .accessibilityLabel("Error")
+                            }
+                            Text(line.message)
+                                .lineLimit(1)
+                                .help(line.message)
+                        }
+                    }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
+                .alternatingRowBackgrounds()
             }
-            footer
         }
-        .background(Theme.card)
+        .safeAreaInset(edge: .bottom, spacing: 0) { footer(count: lines.count) }
         .navigationTitle("Logs")
-        .searchable(text: $search, prompt: "Search")
+        .searchable(text: $search, placement: .toolbar, prompt: "Search")
         .toolbar {
             ToolbarItem {
                 Picker("Show", selection: $filter) {
@@ -52,17 +70,23 @@ struct LogsView: View {
         }
     }
 
-    private var footer: some View {
-        HStack {
-            Text("\(lines.count) lines from the Steam add-on's log")
-                .foregroundStyle(Theme.secondary)
-            Spacer()
-            Button(didCopy ? "Copied" : "Copy Details for a Bug Report", action: copyReport)
+    private func footer(count: Int) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack {
+                Text("^[\(count) line](inflect: true) from the Steam add-on's log")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([model.logFile])
+                }
+                .disabled(model.logLines.isEmpty)
+                Button(didCopy ? "Copied" : "Copy Details for a Bug Report", action: copyReport)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Theme.window)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+        .background(.bar)
     }
 
     private func copyReport() {

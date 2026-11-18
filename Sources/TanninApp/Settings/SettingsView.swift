@@ -5,10 +5,13 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Toggle("Show Tannin in the menu bar", isOn: $showMenuBarItem)
+            Toggle(isOn: $showMenuBarItem) {
+                Text("Show Tannin in the Menu Bar")
+                Text("Status at a glance, and a quick way to start an installed game.")
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 420)
+        .frame(width: 440)
         .fixedSize(horizontal: false, vertical: true)
     }
 }

@@ -12,13 +12,13 @@ public enum SteamAddonError: Error, CustomStringConvertible {
     public var description: String {
         switch self {
         case .steamMissing: return "Steam.app was not found in Applications."
-        case .kitMissing: return "The Steam Play kit is not installed. Run: tannin kit install"
+        case .kitMissing: return "The Steam bridge is not installed yet. Finish setup first (in the app, Set Up Tannin; on the command line, tannin kit install)."
         case let .foreignLibrary(value):
             return "Steam is already set to load something else (\(value)). Tannin will not overwrite it. Remove the other tool first."
         case .notPermitted:
-            return "macOS did not let Tannin change Steam.app. In System Settings > Privacy & Security > App Management, allow your terminal app, then try again."
+            return "macOS did not let Tannin change Steam.app. In System Settings > Privacy & Security > App Management, allow Tannin (or the terminal app, if you ran the command line tool), then try again."
         case .steamStillRunning: return "Steam did not quit. Quit Steam and try again."
-        case let .signingFailed(detail): return "Signing Steam failed: \(detail). Run: tannin steam disable"
+        case let .signingFailed(detail): return "Signing Steam failed: \(detail). Remove Steam Play to put Steam back as Valve ships it."
         case let .restoreNotValve(detail): return "The downloaded Steam.app is not signed by Valve (\(detail)). Nothing was replaced."
         }
     }

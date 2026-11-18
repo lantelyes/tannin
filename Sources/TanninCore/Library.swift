@@ -17,9 +17,11 @@ public struct LibraryGame: Sendable, Hashable, Identifiable {
     /// True for a 32-bit game, false for 64-bit, nil when it cannot be told (not installed, or no program found).
     public let is32Bit: Bool?
     public let art: GameArt
+    /// The game's own folder, once it is installed.
+    public let installFolder: URL?
 
     public init(appID: String, name: String, install: Install, sizeOnDisk: Int64? = nil, launchOptions: String = "",
-                is32Bit: Bool? = nil, art: GameArt = .none) {
+                is32Bit: Bool? = nil, art: GameArt = .none, installFolder: URL? = nil) {
         self.appID = appID
         self.name = name
         self.install = install
@@ -27,6 +29,7 @@ public struct LibraryGame: Sendable, Hashable, Identifiable {
         self.launchOptions = launchOptions
         self.is32Bit = is32Bit
         self.art = art
+        self.installFolder = installFolder
     }
 
     public var id: String { appID }
@@ -55,6 +58,26 @@ public struct LibraryReader: Sendable {
 
     public init(paths: Paths = .live) { self.paths = paths }
 
+    /// Changes whenever something the library is read from changes, so callers can skip reading it again.
+    /// Cheap: it looks at dates only.
+    public func fingerprint() -> String {
+        let fm = FileManager.default
+        func stamp(_ url: URL) -> String {
+            let date = (try? fm.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
+            return date.map { String($0.timeIntervalSince1970) } ?? "-"
+        }
+        var parts = [stamp(paths.steamAppInfo), stamp(paths.steamLibraryCache), stamp(paths.steamConfig)]
+        if let local = try? SteamConfig(paths: paths).localConfig() { parts.append(stamp(local)) }
+        for library in SteamInstall(paths: paths).libraries() {
+            let steamapps = library.appending(path: "steamapps")
+            parts.append(stamp(steamapps))
+            parts.append(stamp(steamapps.appending(path: "compatdata")))
+            let manifests = ((try? fm.contentsOfDirectory(atPath: steamapps.path)) ?? []).filter { $0.hasPrefix("appmanifest_") }.sorted()
+            parts += manifests.map { "\($0)@\(stamp(steamapps.appending(path: $0)))" }
+        }
+        return parts.joined(separator: "|")
+    }
+
     public func read() -> Library {
         let fm = FileManager.default
         let steam = SteamInstall(paths: paths)
@@ -79,7 +102,8 @@ public struct LibraryReader: Sendable {
                 sizeOnDisk: app.sizeOnDisk,
                 launchOptions: options[app.appID] ?? "",
                 is32Bit: is32Bit(app, entry: info[app.appID]),
-                art: GameArt(appID: app.appID, paths: paths)
+                art: GameArt(appID: app.appID, paths: paths),
+                installFolder: app.library.appending(path: "steamapps/common/\(app.installDir)")
             )
         }
 

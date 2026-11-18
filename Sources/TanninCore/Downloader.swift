@@ -46,6 +46,13 @@ public struct DownloadProgress: Sendable, Equatable {
     /// True once the bytes are all here and the file is being checked against its hash.
     public let isVerifying: Bool
 
+    public init(name: String, received: Int64, total: Int64?, isVerifying: Bool) {
+        self.name = name
+        self.received = received
+        self.total = total
+        self.isVerifying = isVerifying
+    }
+
     public var fraction: Double? {
         guard let total, total > 0 else { return nil }
         return min(1, Double(received) / Double(total))

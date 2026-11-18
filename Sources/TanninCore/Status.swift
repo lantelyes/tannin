@@ -17,6 +17,23 @@ public struct TanninStatus: Sendable, Equatable {
     /// Problems with the runner, in plain words. Empty when it is complete.
     public var runnerProblems: [String]
 
+    public init(steamInstalled: Bool, steamPlay: SteamAddon.State, steamBuild: String?, steamRunning: Bool,
+                steamIsValveSigned: Bool, addonLoaded: Bool?, updateFreeze: Bool, engineInstalled: Bool,
+                engineWine: String, d3dMetalVersion: String?, bridgeVersion: String, runnerProblems: [String]) {
+        self.steamInstalled = steamInstalled
+        self.steamPlay = steamPlay
+        self.steamBuild = steamBuild
+        self.steamRunning = steamRunning
+        self.steamIsValveSigned = steamIsValveSigned
+        self.addonLoaded = addonLoaded
+        self.updateFreeze = updateFreeze
+        self.engineInstalled = engineInstalled
+        self.engineWine = engineWine
+        self.d3dMetalVersion = d3dMetalVersion
+        self.bridgeVersion = bridgeVersion
+        self.runnerProblems = runnerProblems
+    }
+
     public enum Headline: Sendable, Equatable {
         case ready
         case steamPlayOff
