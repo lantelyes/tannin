@@ -557,3 +557,30 @@ Differences from the boards, all from what the games showed:
 
 **Not done yet:** playing any of the games past its first screen; a 32-bit Direct3D 11 game; the overlay,
 achievements and cloud saves in a 32-bit game; DXVK's frame cap; anything on a second Mac.
+
+## 2026-11-18: a second Wine engine, and moving a game between them (branch `wine-versions`, for 0.4.0)
+
+- **Wine 11.17's patches.** The 64-bit one is as derived earlier (patched `4573d521…ef5a`). The 32-bit one was
+  built with the corrected `shim32.S`: clean `cc8a9035…6fd9`, hook RVA `0x4f880`, `wm` in `ebx` here too, detour
+  `085df281…7559`, patched `628d0885…5b70`. Both are applied from recipes in Swift and checked against these pins.
+- **Installed beside 11.19 on this Mac** with `tannin engine add 11.17` (the download taken from the copy made
+  for the earlier test, so its pinned hash was checked but not the network path): runner
+  `crossover-tannin-1117`, tool `notproton-tannin-1117`, both ntdll files matching their pins, D3DMetal linked,
+  layer files and descriptors written under their own names (`tannin-dxmt-1117`, `NOTPROTON_TANNIN_DXVK_1117`).
+- **The add-on takes a second tool.** After Steam restarted, LEGO Builder's Journey pinned to
+  `notproton-tannin-1117` (written into Steam's `CompatToolMapping`) started on the 11.17 runner
+  (`runner: build tannin-1117 (Tannin (Wine 11.17))` in its run log) and drew its title screen on D3DMetal 4.0b3.
+  It used the Windows environment it had on 11.19.
+- **Back again.** Unpinned, it started on 11.19 once more. `tannin game restore` then replaced its environment
+  with the copy (a marker file written after the copy was gone, the old environment went to the Trash) and
+  pinned it back to the version the copy belongs to.
+- **Removing.** `tannin engine remove 11.17` moved the engine, its runner, its patched files and its download
+  to the Trash and took its line out of the add-on's list. This Mac is back to one engine, as 0.3.0 leaves it.
+- The newest engine cannot be removed and the default cannot be removed; an engine with games pinned to it moves
+  them to the default first, each with its copy.
+- 86 tests pass. The screens (engine list with download, two engines, the Wine Version row pinned, moved and
+  pinned to a removed engine) are photographed by `scripts/snapshots.sh`.
+
+**Not done yet:** the engine download from the network through the app's Install button; the app's own Move,
+Make Default, Remove and Restore buttons on a real game (the same code was run from the command line); a 32-bit
+game on 11.17; DXMT or DXVK on 11.17.

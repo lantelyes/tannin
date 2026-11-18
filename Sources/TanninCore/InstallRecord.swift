@@ -2,7 +2,7 @@ import Foundation
 
 /// The version of Tannin this code is. Kept equal to the `VERSION` file by a test.
 public enum TanninVersion {
-    public static let current = "0.3.0"
+    public static let current = "0.4.0"
 }
 
 /// What Tannin has installed and from which versions, written whenever it builds or changes those parts.
