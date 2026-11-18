@@ -181,9 +181,12 @@ private func dll(_ label: String, builtin: Bool) -> Data {
 
     @Test func presetsFollowTheLayerAndNeverChangeIt() {
         #expect(GamePreset.bestSpeed.settings(layer: .automatic, effective: .d3dMetal) == GameSettings(metalFX: true))
-        #expect(GamePreset.bestSpeed.settings(layer: .dxvk, effective: .dxvk) == GameSettings(layer: .dxvk, backgroundEffects: true))
+        // Best speed belongs to D3DMetal alone; the other layers have nothing that buys speed.
+        #expect(GamePreset.bestSpeed.settings(layer: .dxvk, effective: .dxvk) == nil)
         #expect(GamePreset.bestSpeed.settings(layer: .dxmt, effective: .dxmt) == nil)
         #expect(GamePreset.offered(effective: .dxmt) == [.recommended, .bestBattery, .custom])
+        #expect(GamePreset.offered(effective: .dxvk) == [.recommended, .bestBattery, .custom])
+        #expect(GamePreset(matching: GameSettings(layer: .dxvk, backgroundEffects: true), effective: .dxvk) == .custom)
         #expect(GamePreset.offered(effective: .d3dMetal) == GamePreset.allCases)
         #expect(GamePreset(matching: GameSettings(layer: .dxmt, frameCap: 30), effective: .dxmt) == .bestBattery)
         #expect(GamePreset(matching: GameSettings(layer: .dxmt), effective: .dxmt) == .recommended)
