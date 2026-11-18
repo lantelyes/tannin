@@ -6,21 +6,15 @@ struct SetupStepRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
     let step: Setup.Step
-    @Binding var isChoosingToolkit: Bool
     @Binding var isAddingSteamPlay: Bool
 
     private static let steamPage = URL(string: "https://store.steampowered.com/about/")!
-    private static let toolkitPage = URL(string: "https://developer.apple.com/download/all/?q=game%20porting%20toolkit")!
 
     private var state: Setup.State { model.setup[step] ?? .waiting("Checking") }
     private var progress: SetupProgress? { model.setupProgress?.step == step ? model.setupProgress : nil }
     private var isRunning: Bool { progress != nil && progress?.isPaused == false }
     private var isWaiting: Bool {
         if case .waiting = state { return true }
-        return false
-    }
-    private var isSkipped: Bool {
-        if case .skipped = state { return true }
         return false
     }
 
@@ -54,7 +48,7 @@ struct SetupStepRow: View {
         } else if isRunning {
             ProgressView().controlSize(.small)
         } else {
-            StatusSymbol.pending.image.font(.title3).opacity(isWaiting || isSkipped ? 0.5 : 1)
+            StatusSymbol.pending.image.font(.title3).opacity(isWaiting ? 0.5 : 1)
         }
     }
 
@@ -65,7 +59,6 @@ struct SetupStepRow: View {
         case .rosetta: "Rosetta"
         case .steam: "Steam"
         case .engine: "Wine Engine"
-        case .toolkit: "Game Porting Toolkit"
         case .bridge: "Steam Bridge"
         case .steamPlay: "Add Steam Play to Steam"
         }
@@ -84,17 +77,10 @@ struct SetupStepRow: View {
                 Text("Not found in the Applications folder. Install it, then come back.")
             }
         case .engine:
-            Text(downloadCaption(idle: "Wine \(Pins.engineWine), built from CodeWeavers' published source.",
+            Text(downloadCaption(idle: state.isDone
+                                     ? "Wine \(Pins.engineWine), with the DXMT and DXVK renderers inside."
+                                     : "Wine \(Pins.engineWine), built from CodeWeavers' published source.",
                                  working: "Downloading Wine \(Pins.engineWine)."))
-        case .toolkit:
-            switch state {
-            case .done:
-                Text("Apple's graphics layer, from your own copy. Apple's signature is valid.")
-            case let .skipped(detail):
-                Text(detail)
-            case .ready, .waiting:
-                Text("Apple's graphics layer. Games that use Direct3D 12 need it. Free with an Apple account.\n[Get It from Apple](\(Self.toolkitPage.absoluteString))")
-            }
         case .bridge:
             Text(downloadCaption(idle: "Lets games talk to Steam. Built once the engine has downloaded.",
                                  working: "Downloading the Steam bridge."))
@@ -107,8 +93,8 @@ struct SetupStepRow: View {
         guard let progress else { return idle }
         guard let download = progress.download else { return progress.isPaused ? "Paused." : "Starting…" }
         if download.isVerifying { return "Checking the download and unpacking it…" }
-        let received = download.received.formatted(.byteCount(style: .file, allowedUnits: .mb))
-        let amount = download.total.map { "\(received) of \($0.formatted(.byteCount(style: .file, allowedUnits: .mb)))" } ?? received
+        let received = download.received.megabytes
+        let amount = download.total.map { "\(received) of \($0.megabytes)" } ?? received
         return progress.isPaused ? "Paused at \(amount)." : "\(working) \(amount)."
     }
 
@@ -146,9 +132,6 @@ struct SetupStepRow: View {
                 } else {
                     Text("Waiting").foregroundStyle(.secondary)
                 }
-            case .skipped:
-                Button("Choose Disk Image…") { isChoosingToolkit = true }
-                    .disabled(model.isBusy)
             case .ready:
                 readyControl
             }
@@ -159,7 +142,6 @@ struct SetupStepRow: View {
         switch step {
         case .rosetta, .engine: "Installed"
         case .steam: "Found"
-        case .toolkit: detail
         case .bridge: "In place"
         case .steamPlay: "On"
         }
@@ -174,12 +156,6 @@ struct SetupStepRow: View {
             Button("Get Steam") { openURL(Self.steamPage) }
         case .engine:
             Button("Download") { start() }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.isBusy)
-        case .toolkit:
-            Button("Skip") { Task { await model.skipToolkit() } }
-                .disabled(model.isBusy)
-            Button("Choose Disk Image…") { isChoosingToolkit = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.isBusy)
         case .bridge:

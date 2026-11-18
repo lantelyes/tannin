@@ -22,8 +22,18 @@ public enum EngineStoreError: Error, CustomStringConvertible {
 /// pinned to which. An engine only counts as installed once its runner is built, since that is what Steam uses.
 public struct EngineStore: Sendable {
     public let paths: Paths
+    let gameIsRunning: @Sendable () -> Bool
+    let disposal: Disposal
 
-    public init(paths: Paths = .live) { self.paths = paths }
+    public init(paths: Paths = .live) {
+        self.init(paths: paths, gameIsRunning: { WindowsGames.anyRunning(paths: paths) }, disposal: .trash)
+    }
+
+    init(paths: Paths, gameIsRunning: @escaping @Sendable () -> Bool, disposal: Disposal) {
+        self.paths = paths
+        self.gameIsRunning = gameIsRunning
+        self.disposal = disposal
+    }
 
     public func isInstalled(_ spec: EngineSpec) -> Bool {
         Engine(paths: paths, spec: spec).isInstalled && Runner(paths: paths, spec: spec).exists
@@ -79,6 +89,35 @@ public struct EngineStore: Sendable {
     public func unlinkToolkit() throws {
         for spec in installed() { try D3DMetalLink(paths: paths, spec: spec).unlink() }
         try InstallRecord.write(paths: paths)
+    }
+
+    // MARK: D3DMetal, the one renderer that does not come inside Wine
+
+    /// The version of D3DMetal on this Mac, if it has been added.
+    public func d3dMetal() -> GPTK.Imported? { GPTK(paths: paths).imported().last }
+
+    /// Adds D3DMetal from the user's own copy of Apple's Game Porting Toolkit, after checking Apple's
+    /// signature, and puts it to use in every installed engine. A version that was there before is replaced.
+    @discardableResult
+    public func addD3DMetal(from source: URL) throws -> GPTK.Imported {
+        guard !gameIsRunning() else { throw EngineStoreError.gameRunning }
+        let toolkit = try GPTK(paths: paths).importToolkit(from: source)
+        try adopt(toolkit)
+        return toolkit
+    }
+
+    /// Makes an imported version the only one, in use by every installed engine.
+    func adopt(_ toolkit: GPTK.Imported) throws {
+        try GPTK(paths: paths).retireOthers(keeping: toolkit, disposal: disposal)
+        try linkToolkit(toolkit)
+    }
+
+    /// Takes D3DMetal out of every engine and gets rid of Tannin's copy. Games then run on DXMT. No game's own
+    /// choice is rewritten, so Steam can stay open.
+    public func removeD3DMetal() throws {
+        guard !gameIsRunning() else { throw EngineStoreError.gameRunning }
+        try unlinkToolkit()
+        try GPTK(paths: paths).removeAll(disposal: disposal)
     }
 
     public func makeDefault(_ spec: EngineSpec) throws {

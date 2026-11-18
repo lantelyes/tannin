@@ -2,14 +2,14 @@ import SwiftUI
 import TanninCore
 
 /// The row above the sidebar's status lines, shown on every page while something Tannin installed is behind
-/// the app. Clicking it opens the Engine page, where each thing has its own row and button.
+/// the app. Clicking it opens the Steam Play page, where each thing has its own row and button.
 struct UpkeepSidebarRow: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         if !model.upkeep.isEmpty {
             Button {
-                model.selection = .engine
+                model.selection = .steamPlay
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.down.circle.fill")
@@ -32,14 +32,14 @@ struct UpkeepSidebarRow: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 10)
             .padding(.bottom, 4)
-            .help("Open the Engine page to finish updating")
+            .help("Open Steam Play to finish updating")
         }
     }
 
     private var summary: String {
         model.upkeep.map { item in
             switch item {
-            case .graphicsLayers: "Graphics layers"
+            case .graphicsLayers: "Renderers"
             }
         }.joined(separator: ", ")
     }

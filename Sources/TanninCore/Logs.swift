@@ -70,17 +70,28 @@ public struct LogReader: Sendable {
         return nil
     }
 
+    /// "11.19 (default), 11.17", in the order the Engines & Renderers page lists them.
+    static func enginesLine(installed: [EngineSpec], fallback: EngineSpec?) -> String {
+        guard !installed.isEmpty else { return "none installed" }
+        return installed.map { $0 == fallback && installed.count > 1 ? "\($0.wine) (default)" : $0.wine }.joined(separator: ", ")
+    }
+
+    /// "D3DMetal 4.0b3, DXMT 0.80, DXVK 1.10.3", in the order the page lists them.
+    static func renderersLine(d3dMetal: String?) -> String {
+        "\(d3dMetal.map { "D3DMetal \($0)" } ?? "D3DMetal not added"), DXMT \(LayerStore.dxmtVersion), DXVK \(LayerStore.dxvkVersion)"
+    }
+
     /// Text for a bug report: versions plus the last lines of the log, with the home folder written as "~".
     public func bugReport(status: TanninStatus, games: [LibraryGame] = [], lines: Int = 60) -> String {
+        let store = EngineStore(paths: paths)
         var out = [
             "Tannin bug report",
             "macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)",
             "Steam build: \(status.steamBuild ?? "unknown")",
             "Steam Play: \(status.steamPlay)",
             "Add-on loaded on last start: \(status.addonLoaded.map(String.init) ?? "never ran")",
-            "Wine engine: \(status.engineInstalled ? status.engineWine : "not installed")",
-            "D3DMetal: \(status.d3dMetalVersion ?? "not added")",
-            "DXMT: \(LayerStore.dxmtVersion), DXVK: \(LayerStore.dxvkVersion)",
+            "Wine engines: \(Self.enginesLine(installed: store.installed(), fallback: store.defaultEngine()))",
+            "Renderers: \(Self.renderersLine(d3dMetal: status.d3dMetalVersion))",
             "Steam bridge: NotProton \(status.bridgeVersion)",
             "Update freeze: \(status.updateFreeze ? "on" : "off")",
         ]
@@ -89,9 +100,9 @@ public struct LogReader: Sendable {
             for game in games {
                 let bits = game.is32Bit.map { $0 ? "32-bit" : "64-bit" } ?? "bits unknown"
                 let ran = LayerUsage.lastRun(appID: game.appID, is32Bit: game.is32Bit, paths: paths).map { ", last ran on \($0.title)" } ?? ""
-                let wine = EngineStore(paths: paths).engine(for: game.appID)?.wine ?? status.engineWine
+                let wine = store.engine(for: game.appID)?.wine ?? status.engineWine
                 let window = FixedWindow(paths: paths).size(appID: game.appID).map { ", fixed window \($0)" } ?? ""
-                out.append("\(game.name) (\(game.appID)): \(bits), layer \(game.settings.layer.title), Wine \(wine)\(ran)\(window)")
+                out.append("\(game.name) (\(game.appID)): \(bits), renderer \(game.settings.layer.title), Wine \(wine)\(ran)\(window)")
             }
         }
         out += [

@@ -62,8 +62,7 @@ import Testing
         #expect(InstallRecord.read(paths: paths)?.runners.first?.tannin == TanninVersion.current)
         let upkeep = Upkeep(paths: paths, gameIsRunning: { false })
         #expect(upkeep.plan().isEmpty)
-        try setup.skipToolkit()
-        #expect(setup.state(of: .toolkit).isSettled)
+        #expect(setup.isReadyForSteamPlay == false) // Steam is not installed in this home; nothing else is missing.
 
         // A runner as Tannin 0.2 built it: Wine's own 32-bit ntdll, no DXMT, no layer files. The after-update
         // step finds it, and one run brings it up to date.
@@ -87,11 +86,11 @@ import Testing
 
         // D3DMetal, from this Mac's already imported copy when there is one. Apple's signature is checked again.
         if let toolkit = GPTK(paths: live).imported().last {
-            let imported = try setup.importToolkit(from: toolkit.lib.deletingLastPathComponent())
+            let store = EngineStore(paths: paths, gameIsRunning: { false }, disposal: .delete)
+            let imported = try store.addD3DMetal(from: toolkit.lib.deletingLastPathComponent())
             #expect(imported.version == toolkit.version)
-            #expect(!setup.toolkitIsSkipped)
+            #expect(store.d3dMetal()?.version == toolkit.version)
             #expect(D3DMetalLink(paths: paths).linkedVersion() == toolkit.version)
-            #expect(setup.state(of: .toolkit) == .done("D3DMetal \(toolkit.version)"))
             #expect(setup.state(of: .bridge) == .done("NotProton \(Pins.notProtonVersion)"))
             #expect(runner.verify().allSatisfy { $0.state != .broken && $0.state != .attention })
             // D3DMetal takes the 64-bit side; DXMT keeps the 32-bit side.
@@ -100,8 +99,11 @@ import Testing
             #expect(InstallRecord.read(paths: paths)?.runners.first?.d3dMetalVersion == toolkit.version)
             #expect(upkeep.plan().isEmpty)
 
-            // Taking it out again leaves a runner that works without it.
-            try D3DMetalLink(paths: paths).unlink()
+            // Removing it leaves a runner that works without it, and no copy for a later rebuild to pick up.
+            #expect(throws: EngineStoreError.self) { try EngineStore(paths: paths, gameIsRunning: { true }, disposal: .delete).removeD3DMetal() }
+            try store.removeD3DMetal()
+            #expect(store.d3dMetal() == nil)
+            #expect(D3DMetalLink(paths: paths).linkedVersion() == nil)
             #expect(layers.runnerHasDXMT(runner.root, arch: "x86_64"))
             #expect(runner.verify().allSatisfy { $0.state != .broken && $0.state != .attention })
         }

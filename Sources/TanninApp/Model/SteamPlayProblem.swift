@@ -33,8 +33,8 @@ enum SteamPlayProblem: Equatable {
     var detail: String {
         switch self {
         case .steamMissing: "Install Steam, then open Tannin again"
-        case .setupIncomplete: "Open Engine to continue"
-        case .off: "Add it in Engine"
+        case .setupIncomplete: "Open Steam Play to continue"
+        case .off: "Add it in Steam Play"
         case .steamUpdated: "Steam updated itself"
         case .otherTool: "Remove the other tool first"
         }

@@ -17,6 +17,35 @@ struct EngineProgress: Equatable {
     var spec: EngineSpec
     var download: DownloadProgress?
     var isPaused = false
+
+    /// "Downloading. 212 MB of 461 MB.", with the words to begin with left to the place that shows it.
+    func caption(working: String = "Downloading") -> String {
+        guard let download else { return isPaused ? "Paused." : "Starting…" }
+        if download.isVerifying { return "Checking the download and unpacking it…" }
+        let received = download.received.megabytes
+        let amount = download.total.map { "\(received) of \($0.megabytes)" } ?? received
+        return isPaused ? "Paused at \(amount)." : "\(working). \(amount)."
+    }
+
+    /// How far along it is, while there is a bar to draw.
+    var fraction: Double? {
+        guard let fraction = download?.fraction, download?.isVerifying == false || isPaused else { return nil }
+        return fraction
+    }
+}
+
+extension EngineSpec {
+    /// "461 MB", for an engine that is not installed.
+    var downloadSize: String { (pin.size ?? 0).megabytes }
+}
+
+/// How adding D3DMetal from a disk image is going, for the sheet that asks for it.
+enum D3DMetalAdd: Equatable {
+    case idle
+    /// Tannin is checking the disk image with this name.
+    case checking(String)
+    /// The last one was not added; the sentence says why.
+    case failed(String)
 }
 
 /// Which Wine engine one game uses.

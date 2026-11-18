@@ -25,10 +25,8 @@ public struct Paths: Sendable {
     public var gptk: URL { tannin.appending(path: "GPTK") }
     public var kit: URL { tannin.appending(path: "Kit") }
     public var backups: URL { tannin.appending(path: "Backups") }
-    /// Files for the graphics layers that are not the runner's own, one folder per engine.
+    /// Files for the renderers that are not the runner's own, one folder per engine.
     public var layers: URL { tannin.appending(path: "Layers") }
-    /// Present once the user has chosen to go without Apple's toolkit during setup.
-    public var toolkitSkipped: URL { tannin.appending(path: "toolkit-skipped") }
     /// Copies of games' Windows environments, made before a game moves to another Wine version.
     public var environments: URL { tannin.appending(path: "Environments") }
     /// What Tannin has installed, and from which versions.

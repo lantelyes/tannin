@@ -128,6 +128,33 @@ private func dll(_ label: String, builtin: Bool) -> Data {
     }
 }
 
+@Suite struct RendererInEffectTests {
+    @Test func aRendererChosenByNameIsTheOneInEffect() {
+        for chosen in [GraphicsLayer.d3dMetal, .dxmt, .dxvk] {
+            #expect(GraphicsLayer.inEffect(chosen: chosen, is32Bit: false, toolkitAdded: true, lastRan: .wineOwn) == chosen)
+        }
+    }
+
+    @Test func automaticComesToWhatTheGameGets() {
+        #expect(GraphicsLayer.inEffect(chosen: .automatic, is32Bit: false, toolkitAdded: true, lastRan: nil) == .d3dMetal)
+        #expect(GraphicsLayer.inEffect(chosen: .automatic, is32Bit: false, toolkitAdded: false, lastRan: .dxmt) == .dxmt)
+        #expect(GraphicsLayer.inEffect(chosen: .automatic, is32Bit: true, toolkitAdded: true, lastRan: nil) == .dxmt)
+        // Not installed yet, so its bit width is not known.
+        #expect(GraphicsLayer.inEffect(chosen: .automatic, is32Bit: nil, toolkitAdded: true, lastRan: nil) == nil)
+        // A Direct3D 9 game is drawn by Wine itself.
+        #expect(GraphicsLayer.inEffect(chosen: .automatic, is32Bit: true, toolkitAdded: true, lastRan: .wineOwn) == nil)
+    }
+
+    @Test func d3dMetalChosenButNotOnTheMacIsDrawnByDXMT() {
+        #expect(GraphicsLayer.inEffect(chosen: .d3dMetal, is32Bit: false, toolkitAdded: false, lastRan: nil) == .d3dMetal)
+        #expect(GraphicsLayer.drawing(chosen: .d3dMetal, is32Bit: false, toolkitAdded: false, lastRan: nil) == .dxmt)
+        #expect(GraphicsLayer.drawing(chosen: .d3dMetal, is32Bit: false, toolkitAdded: true, lastRan: nil) == .d3dMetal)
+        #expect(GraphicsLayer.drawing(chosen: .automatic, is32Bit: false, toolkitAdded: true, lastRan: nil) == .d3dMetal)
+        #expect(GraphicsLayer.drawing(chosen: .dxvk, is32Bit: false, toolkitAdded: false, lastRan: nil) == .dxvk)
+        #expect(GraphicsLayer.drawing(chosen: .automatic, is32Bit: true, toolkitAdded: false, lastRan: .wineOwn) == nil)
+    }
+}
+
 @Suite struct LayerSettingsTests {
     @Test func eachLayerWritesItsOwnWords() {
         let user = "MY_FLAG=1 %command% -windowed"
@@ -227,27 +254,17 @@ private func dll(_ label: String, builtin: Bool) -> Data {
 }
 
 @Suite struct OptionalToolkitTests {
-    @Test func skippingTheToolkitIsRememberedAndUndoneByImporting() throws {
+    @Test func d3dMetalIsNoSetupStepAndAnOldSkipMarkChangesNothing() throws {
         let paths = try makeEngine()
         defer { try? FileManager.default.removeItem(at: paths.home) }
         let setup = Setup(paths: paths, rosetta: paths.home.appending(path: "rosetta"))
-        #expect(setup.state(of: .toolkit) == .ready)
-        try setup.skipToolkit()
-        #expect(setup.toolkitIsSkipped)
-        guard case .skipped = setup.state(of: .toolkit) else { Issue.record("not skipped"); return }
-        #expect(setup.state(of: .toolkit).isSettled)
-        #expect(!setup.state(of: .toolkit).isDone)
-
-        // An imported toolkit wins over the mark.
-        let lib = paths.gptk.appending(path: "D3DMetal-4.0b3/lib/external")
-        try FileManager.default.createDirectory(at: lib, withIntermediateDirectories: true)
-        try Data().write(to: lib.appending(path: "libd3dshared.dylib"))
-        #expect(setup.state(of: .toolkit) == .done("D3DMetal 4.0b3"))
-    }
-
-    @Test func steamPlayDoesNotWaitForTheToolkit() {
-        #expect(!Setup.required.contains(.toolkit))
+        #expect(Setup.Step.allCases == [.rosetta, .steam, .engine, .bridge, .steamPlay])
         #expect(Setup.required == [.rosetta, .steam, .engine, .bridge])
+        let before = setup.states().map(\.state)
+
+        // What Tannin 0.3 to 0.5 left behind when the toolkit step was skipped.
+        try Data().write(to: paths.tannin.appending(path: "toolkit-skipped"))
+        #expect(setup.states().map(\.state) == before)
     }
 
     @Test func aMissingToolkitIsNotAnUnfinishedSetup() {
@@ -405,6 +422,72 @@ private func makeEngines(_ specs: [EngineSpec]) throws -> Paths {
         try store.makeDefault(.wine1117)
         #expect(throws: EngineStoreError.self) { try store.remove(.wine1117) }
         #expect(store.installed().count == 2)
+    }
+}
+
+@Suite struct D3DMetalTests {
+    /// A made-up imported copy; adding a real one needs Apple's signature, which SetupFromScratchTests covers.
+    private func importCopy(_ version: String, into paths: Paths) throws -> GPTK.Imported {
+        let lib = paths.gptk.appending(path: "D3DMetal-\(version)/lib")
+        try FileManager.default.createDirectory(at: lib.appending(path: "external"), withIntermediateDirectories: true)
+        try Data().write(to: lib.appending(path: "external/libd3dshared.dylib"))
+        return GPTK.Imported(version: version, lib: lib)
+    }
+
+    @Test func oneVersionAtATime() throws {
+        let paths = try makeEngines([.wine1119])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let newer = try importCopy("4.0b3", into: paths)
+        let older = try importCopy("3.0", into: paths)
+        let toolkit = GPTK(paths: paths)
+        // The newer name would be picked up again by anything that rebuilds a runner.
+        #expect(try toolkit.current().version == newer.version)
+
+        try toolkit.retireOthers(keeping: older, disposal: .delete)
+        #expect(toolkit.imported().map(\.version) == ["3.0"])
+        #expect(try toolkit.current().version == older.version)
+    }
+
+    @Test func removingLeavesNoCopyBehindAndPutsDXMTBack() throws {
+        let paths = try makeEngine()
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        // A runner as it is with D3DMetal in it: Wine's own files on the 64-bit side, and the mark.
+        let runner = Runner(paths: paths).root
+        try Shell.check("/bin/mkdir", ["-p", runner.deletingLastPathComponent().path])
+        try Shell.check("/bin/cp", ["-R", Engine(paths: paths).wine.path, runner.path])
+        _ = try importCopy("4.0b3", into: paths)
+        let marker = runner.appending(path: "lib/external/.tannin-d3dmetal")
+        try FileManager.default.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "4.0b3".write(to: marker, atomically: true, encoding: .utf8)
+        let store = EngineStore(paths: paths, gameIsRunning: { false }, disposal: .delete)
+        #expect(store.installed() == [.newest])
+        #expect(store.d3dMetal()?.version == "4.0b3")
+        #expect(D3DMetalLink(paths: paths).linkedVersion() == "4.0b3")
+
+        try store.removeD3DMetal()
+        #expect(store.d3dMetal() == nil)
+        #expect(D3DMetalLink(paths: paths).linkedVersion() == nil)
+        #expect(GPTK(paths: paths).imported().isEmpty)
+        // Without D3DMetal the 64-bit side needs DXMT to be of any use.
+        #expect(LayerStore(paths: paths).runnerHasDXMT(runner, arch: "x86_64"))
+    }
+
+    @Test func nothingChangesWhileAGameIsRunning() throws {
+        let paths = try makeEngines([.wine1119])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        _ = try importCopy("4.0b3", into: paths)
+        let store = EngineStore(paths: paths, gameIsRunning: { true }, disposal: .delete)
+        #expect(throws: EngineStoreError.self) { try store.removeD3DMetal() }
+        #expect(throws: EngineStoreError.self) { try store.addD3DMetal(from: paths.home.appending(path: "none.dmg")) }
+        #expect(store.d3dMetal()?.version == "4.0b3")
+    }
+
+    @Test func theBugReportListsEnginesAndRenderersInThePagesOrder() {
+        #expect(LogReader.enginesLine(installed: [.wine1119, .wine1117], fallback: .wine1119) == "11.19 (default), 11.17")
+        #expect(LogReader.enginesLine(installed: [.wine1119], fallback: .wine1119) == "11.19")
+        #expect(LogReader.enginesLine(installed: [], fallback: nil) == "none installed")
+        #expect(LogReader.renderersLine(d3dMetal: "4.0b3") == "D3DMetal 4.0b3, DXMT 0.80, DXVK 1.10.3")
+        #expect(LogReader.renderersLine(d3dMetal: nil) == "D3DMetal not added, DXMT 0.80, DXVK 1.10.3")
     }
 }
 

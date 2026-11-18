@@ -46,6 +46,12 @@ final class AppModel {
     var selection: SidebarSelection?
     var search = ""
     var isShowingSteamPlaySheet = false
+    /// The Add D3DMetal sheet, opened from the Engines & Renderers page or from a game's Renderer pop-up.
+    var isShowingD3DMetalSheet = false
+    private(set) var d3dMetalAdd = D3DMetalAdd.idle
+    /// The Wine version a game's page asked for and that game has not moved to yet. Forgotten when the app quits;
+    /// the engine itself stays, in the list of engines.
+    private(set) var wantedEngines: [String: EngineSpec] = [:]
 
     /// Decided once, before any window opens: whether the app starts in its setup window.
     let needsSetupAtLaunch: Bool
@@ -184,7 +190,7 @@ final class AppModel {
     /// Keeps the selection pointing at something that exists, starting on the first installed game.
     private func reconcileSelection() {
         if case let .game(appID) = selection, library.game(appID) != nil { return }
-        if selection == .engine || selection == .logs { return }
+        if selection == .steamPlay || selection == .renderers || selection == .logs { return }
         selection = library.installed.first.map { .game($0.appID) }
     }
 
@@ -198,6 +204,9 @@ final class AppModel {
         setupProgress = fixture.setupProgress
         selection = fixture.selection
         isShowingSteamPlaySheet = fixture.isShowingSteamPlaySheet
+        isShowingD3DMetalSheet = fixture.d3dMetalAdd != nil
+        d3dMetalAdd = fixture.d3dMetalAdd ?? .idle
+        wantedEngines = fixture.wantedEngines
         upkeep = fixture.upkeep
         upkeepProgress = fixture.upkeepProgress
         layerUsage = fixture.layerUsage
@@ -219,6 +228,9 @@ final class AppModel {
         libraryFingerprint = nil
         setupProgress = nil
         isShowingSteamPlaySheet = false
+        isShowingD3DMetalSheet = false
+        d3dMetalAdd = .idle
+        wantedEngines = [:]
         selection = nil
         upkeepProgress = nil
         engineSize = nil
@@ -310,19 +322,55 @@ final class AppModel {
         }
     }
 
-    func importToolkit(from url: URL) async {
-        let paths = paths
-        await perform("Importing the Game Porting Toolkit") {
-            try Setup(paths: paths).importToolkit(from: url)
+    // MARK: D3DMetal
+
+    var d3dMetalIsAdded: Bool { status?.d3dMetalVersion != nil }
+
+    /// Installed games by the renderer that really draws them, whether it was chosen or Automatic came to it.
+    func games(drawnBy renderer: GraphicsLayer) -> [LibraryGame] {
+        let added = d3dMetalIsAdded
+        return library.installed.filter {
+            GraphicsLayer.drawing(chosen: $0.settings.layer, is32Bit: $0.is32Bit, toolkitAdded: added, lastRan: layerUsage[$0.appID]) == renderer
         }
     }
 
-    /// Goes on without Apple's toolkit for now. Games then run on DXMT.
-    func skipToolkit() async {
+    func showD3DMetalSheet() {
+        if case .failed = d3dMetalAdd { d3dMetalAdd = .idle }
+        isShowingD3DMetalSheet = true
+    }
+
+    /// Adds D3DMetal from the user's own copy of Apple's Game Porting Toolkit, replacing a version that was
+    /// there. The sheet stays up while this runs; it closes on success and shows the reason on failure.
+    func addD3DMetal(from url: URL) async {
+        guard !isBusy else { return }
         let paths = paths
-        await perform("Skipping the Game Porting Toolkit") {
-            try Setup(paths: paths).skipToolkit()
+        activity = "Adding D3DMetal"
+        d3dMetalAdd = .checking(url.lastPathComponent)
+        do {
+            try await Task.detached { _ = try EngineStore(paths: paths).addD3DMetal(from: url) }.value
+            activity = nil
+            // What is on the Mac is read again first, so a page that was waiting for D3DMetal sees it arrive.
+            await refresh()
+            d3dMetalAdd = .idle
+            isShowingD3DMetalSheet = false
+        } catch {
+            activity = nil
+            d3dMetalAdd = .failed(String(describing: error))
+            await refresh()
         }
+    }
+
+    /// Takes D3DMetal out again. No game's own choice is rewritten, so Steam stays open.
+    func removeD3DMetal() async {
+        let paths = paths
+        await perform("Removing D3DMetal") {
+            try EngineStore(paths: paths).removeD3DMetal()
+        }
+    }
+
+    func showD3DMetalInFinder() {
+        guard let toolkit = EngineStore(paths: paths).d3dMetal() else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([toolkit.lib.deletingLastPathComponent()])
     }
 
     /// Does one thing the after-update step found. Failure leaves everything as it was and is shown on its row.
@@ -346,7 +394,7 @@ final class AppModel {
         if upkeepProgress == .finished { upkeepProgress = nil }
     }
 
-    /// True while there is something for the Engine page's "After the Update" rows to show.
+    /// True while there is something for the Steam Play page's "After the Update" rows to show.
     var hasUpkeepToShow: Bool { !upkeep.isEmpty || upkeepProgress != nil }
 
     // MARK: Wine engines
@@ -388,6 +436,18 @@ final class AppModel {
         await refresh()
     }
 
+    /// Fetches a Wine version a game's page asked for. Steam stays open; the game only moves when the user says
+    /// so afterwards, from the notice on its page.
+    func fetchEngine(_ spec: EngineSpec, for appID: String) async {
+        wantedEngines[appID] = spec
+        await installEngine(spec)
+    }
+
+    /// Leaves a game where it is after all. The engine that was fetched for it stays installed.
+    func forgetWantedEngine(for appID: String) {
+        wantedEngines[appID] = nil
+    }
+
     /// Makes an engine the default. Games that follow the default move with it, each with a copy kept first.
     func makeDefaultEngine(_ spec: EngineSpec) async {
         let paths = paths
@@ -417,6 +477,7 @@ final class AppModel {
             try GameMove(paths: paths).move(appID: appID, to: spec)
         }
         if gameEngines[appID]?.runsOn != before?.runsOn { recentlyMoved.insert(appID) }
+        wantedEngines[appID] = nil
     }
 
     /// Puts back the copy of a game's Windows environment made before it last moved.
@@ -495,7 +556,7 @@ final class AppModel {
                 case .rosetta: try setup.installRosetta(context)
                 case .engine: try setup.installEngine(context)
                 case .bridge: try setup.installBridge(context)
-                case .steam, .toolkit, .steamPlay: break
+                case .steam, .steamPlay: break
                 }
             }.value
             finished = true

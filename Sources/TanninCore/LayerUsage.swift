@@ -1,6 +1,6 @@
 import Foundation
 
-/// Which graphics layer a game ran on the last time it was started, as far as its logs show.
+/// Which renderer a game ran on the last time it was started, as far as its logs show.
 ///
 /// DXMT and DXVK both write lines of their own into the game's Wine log. D3DMetal writes none, so it is only
 /// named when everything else points to it; and nothing in the log tells a Direct3D 9 game on Wine's own layer
@@ -16,7 +16,7 @@ public enum LayerUsage: String, Sendable, Equatable {
         case .d3dMetal: "D3DMetal"
         case .dxmt: "DXMT"
         case .dxvk: "DXVK"
-        case .wineOwn: "Wine's own layer"
+        case .wineOwn: "Wine's own drawing"
         }
     }
 

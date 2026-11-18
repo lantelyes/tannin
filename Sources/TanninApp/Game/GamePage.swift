@@ -11,9 +11,8 @@ struct GamePage: View {
     @State private var preset: GamePreset
     @State private var isConfirmingQuit = false
     @State private var isConfirmingRemoval = false
-    @State private var isChoosingToolkit = false
-    /// The Wine version the user picked and has not confirmed yet.
-    @State private var pendingMove: WineChoice?
+    /// The move the user asked for and has not confirmed yet.
+    @State private var pendingMove: PendingMove?
     @State private var isConfirmingMove = false
     @State private var isConfirmingRestore = false
     /// The fixed window chosen on the page, which may not be saved yet.
@@ -22,7 +21,7 @@ struct GamePage: View {
     init(game: LibraryGame) {
         self.game = game
         _draft = State(initialValue: SettingsDraft(game.settings))
-        // The real value is set as soon as the page knows whether Apple's toolkit is there.
+        // The real value is set as soon as the page knows whether D3DMetal is there.
         _preset = State(initialValue: .custom)
     }
 
@@ -32,16 +31,16 @@ struct GamePage: View {
     private var hasEnvironment: Bool { model.gamesWithEnvironment.contains(game.appID) }
     private var isRunning: Bool { model.runningGames.contains(game.appID) }
 
-    /// A 32-bit or 64-bit game; unknown until it is installed.
-    private var is32Bit: Bool? { game.isInstalled ? game.is32Bit : nil }
-    private var toolkitAdded: Bool { model.status?.d3dMetalVersion != nil }
+    /// A game's move to a Wine version, or with no version back to the default.
+    private struct PendingMove {
+        var spec: EngineSpec?
+    }
 
-    /// The layer the game really gets: the chosen one, or what Automatic comes to. Nil when that is not known yet.
+    /// The renderer whose settings the page shows: the chosen one, or what Automatic comes to. Nil when that
+    /// is not known yet, and for a Direct3D 9 game, which Wine draws itself.
     private var effectiveLayer: GraphicsLayer? {
-        guard draft.layer == .automatic else { return draft.layer }
-        // A Direct3D 9 game stays on Wine's own layer, which has none of the layers' settings.
-        if game.isInstalled, model.layerUsage[game.appID] == .wineOwn { return nil }
-        return GraphicsLayer.automaticChoice(is32Bit: is32Bit, toolkitAdded: toolkitAdded)
+        GraphicsLayer.inEffect(chosen: draft.layer, is32Bit: game.isInstalled ? game.is32Bit : nil, toolkitAdded: model.d3dMetalIsAdded,
+                               lastRan: game.isInstalled ? model.layerUsage[game.appID] : nil)
     }
 
     var body: some View {
@@ -58,7 +57,7 @@ struct GamePage: View {
         .onChange(of: preset) { applyPreset() }
         .onChange(of: draft) { matchPreset() }
         .onChange(of: draft.layer) {
-            // Settings that belong to the layer just left would do nothing, so they are not carried over.
+            // Settings that belong to the renderer just left would do nothing, so they are not carried over.
             let trimmed = SettingsDraft(draft.settings.keeping(onlyWhatAppliesTo: effectiveLayer))
             if trimmed != draft { draft = trimmed }
         }
@@ -68,9 +67,9 @@ struct GamePage: View {
             // Saved, or changed in Steam itself: show what Steam has now.
             draft = SettingsDraft(game.settings)
         }
-        .confirmationDialog(moveTitle, isPresented: $isConfirmingMove, presenting: pendingMove) { choice in
+        .confirmationDialog(moveTitle, isPresented: $isConfirmingMove, presenting: pendingMove) { move in
             Button(model.status?.steamRunning == true ? "Quit Steam and Move" : "Move") {
-                Task { await model.moveGame(game.appID, to: choice.spec) }
+                Task { await model.moveGame(game.appID, to: move.spec) }
             }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
@@ -84,11 +83,6 @@ struct GamePage: View {
         } message: {
             Text(restoreMessage)
         }
-        .fileImporter(isPresented: $isChoosingToolkit, allowedContentTypes: [.diskImage, .folder]) { result in
-            if case let .success(url) = result {
-                Task { await model.importToolkit(from: url) }
-            }
-        }
         .confirmationDialog("Quit Steam to save?", isPresented: $isConfirmingQuit) {
             Button("Quit Steam and Save") { save() }
             Button("Cancel", role: .cancel) {}
@@ -101,7 +95,7 @@ struct GamePage: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(EngineView.removalMessage)
+            Text(SteamPlayView.removalMessage)
         }
     }
 
@@ -131,7 +125,26 @@ struct GamePage: View {
         .padding(.bottom, 2)
     }
 
+    /// The Wine version fetched from this page, once it is installed and the game is not on it yet.
+    private var arrivedEngine: EngineSpec? {
+        guard let wanted = model.wantedEngines[game.appID], model.gameEngines[game.appID]?.runsOn != wanted,
+              model.engines.contains(where: { $0.spec == wanted && $0.isInstalled }) else { return nil }
+        return wanted
+    }
+
+    private func requestMove(to spec: EngineSpec?) {
+        pendingMove = PendingMove(spec: spec)
+        isConfirmingMove = true
+    }
+
     @ViewBuilder private var notices: some View {
+        if let arrivedEngine {
+            NoticeRow(symbol: .info, text: "\(arrivedEngine.title) is here. Move this game to it?") {
+                Button("Not Now") { model.forgetWantedEngine(for: game.appID) }
+                Button("Move…") { requestMove(to: arrivedEngine) }
+                    .disabled(model.isBusy)
+            }
+        }
         if model.recentlyMoved.contains(game.appID), let engine = model.gameEngines[game.appID], model.environmentCopies[game.appID] != nil {
             NoticeRow(symbol: .info, text: "This game moved to \(engine.runsOn.title). A copy of its Windows environment from before is kept.") {
                 Button("Restore…") { isConfirmingRestore = true }
@@ -169,51 +182,11 @@ struct GamePage: View {
 
     private var settings: some View {
         Form {
-            Section("Graphics") {
-                layerPicker
-                switch effectiveLayer {
-                case .d3dMetal:
-                    Toggle(isOn: $draft.rayTracing) {
-                        Text("Ray Tracing")
-                        Text("Looks better, costs frame rate. Off by default on M1 and M2.")
-                    }
-                    Toggle(isOn: $draft.metalFX) {
-                        Text("MetalFX Upscaling")
-                        Text("Lets the game's DLSS setting use Apple's upscaler.")
-                    }
-                case .dxmt:
-                    Picker(selection: $draft.upscaling) {
-                        ForEach(GameSettings.upscalingFactors, id: \.self) { factor in
-                            Text(factor == 0 ? "Off" : "\(factor.formatted())×").tag(factor)
-                        }
-                    } label: {
-                        Text("Upscaling")
-                        Text("Enlarges the game's picture with MetalFX. Set a lower resolution in the game to gain speed.")
-                    }
-                case .dxvk:
-                    Toggle(isOn: $draft.backgroundEffects) {
-                        Text("Prepare Effects in the Background")
-                        Text("Less stutter the first time an effect appears. It may show a moment late.")
-                    }
-                case .automatic, nil:
-                    EmptyView()
-                }
-                Picker("Frame Cap", selection: $draft.frameCap) {
-                    ForEach(SettingsDraft.frameCaps, id: \.self) { cap in
-                        Text(cap == 0 ? "None" : "\(cap) fps").tag(cap)
-                    }
-                }
-            }
+            GameRunsOn(game: game, draft: $draft, requestMove: requestMove)
+            GameRendererSettings(draft: $draft, renderer: effectiveLayer)
             Section {
-                if effectiveLayer == .d3dMetal {
-                    Toggle(isOn: $draft.metal4) {
-                        Text("Metal 4 Renderer")
-                        Text("The default on macOS 27. Turn off to use Metal 3.")
-                    }
-                }
                 Toggle("Performance Overlay", isOn: $draft.performanceHUD)
                 fixedWindowRow
-                wineVersionRow
                 LabeledContent("Launch Options") {
                     Text(launchOptionsPreview)
                         .font(.callout.monospaced())
@@ -264,64 +237,9 @@ struct GamePage: View {
         return FixedWindow.sizes(fittingWidth: room.width, height: room.height, including: draftWindow ?? savedWindow)
     }
 
-    // MARK: Wine version
-
-    /// The pop-up's entries: follow the default, or one installed engine.
-    private enum WineChoice: Hashable {
-        case followDefault
-        case pinned(EngineSpec)
-
-        var spec: EngineSpec? {
-            if case let .pinned(spec) = self { return spec }
-            return nil
-        }
-    }
-
-    /// Shown once a second engine is installed, or while the game is pinned to one that has been removed.
-    @ViewBuilder private var wineVersionRow: some View {
-        if game.isInstalled, let engine = model.gameEngines[game.appID], model.hasSeveralEngines || engine.pin != nil {
-            if engine.pinIsInstalled {
-                Picker(selection: wineChoice(engine)) {
-                    Text("Default (\(defaultWine))").tag(WineChoice.followDefault)
-                    Divider()
-                    ForEach(model.engines.filter(\.isInstalled)) { row in
-                        Text(row.spec.title).tag(WineChoice.pinned(row.spec))
-                    }
-                } label: {
-                    Text("Wine Version")
-                    if engine.pin != nil {
-                        Text("Set for this game only.")
-                    }
-                }
-                .disabled(model.isBusy)
-            } else if let pin = engine.pin {
-                LabeledContent {
-                    Button("Install") { Task { await model.installEngine(pin) } }
-                        .disabled(model.isBusy)
-                } label: {
-                    Label {
-                        Text("Wine Version")
-                        Text("\(pin.title) is not installed. This game uses \(engine.runsOn.wine) until it is.")
-                    } icon: {
-                        StatusSymbol.warning.image
-                    }
-                }
-            }
-        }
-    }
+    // MARK: Moving between Wine versions
 
     private var defaultWine: String { model.engines.first(where: \.isDefault)?.spec.wine ?? Pins.engineWine }
-
-    /// Choosing a version does not apply it: it asks first, because Steam has to quit and a copy is made.
-    private func wineChoice(_ engine: GameEngine) -> Binding<WineChoice> {
-        Binding {
-            engine.pin.map(WineChoice.pinned) ?? .followDefault
-        } set: { choice in
-            guard choice.spec != engine.pin else { return }
-            pendingMove = choice
-            isConfirmingMove = true
-        }
-    }
 
     private var moveTitle: String {
         let target = pendingMove?.spec?.title ?? "the default, Wine \(defaultWine)"
@@ -336,88 +254,6 @@ struct GamePage: View {
     private var restoreMessage: String {
         guard let copy = model.environmentCopies[game.appID] else { return "" }
         return "It was made before this game moved from Wine \(copy.fromWine) to \(copy.toWine). Anything the game has saved in its Windows environment since then is replaced. Saves in Steam Cloud are not affected. Steam quits and reopens."
-    }
-
-    // MARK: Graphics layer
-
-    /// The pop-up's entries: the layers, and without Apple's toolkit the way to add it.
-    private enum LayerChoice: Hashable {
-        case layer(GraphicsLayer)
-        case addToolkit
-    }
-
-    private var layerPicker: some View {
-        Picker(selection: layerChoice) {
-            layerOption(.automatic, detail: automaticDetail)
-            Divider()
-            if toolkitAdded {
-                layerOption(.d3dMetal, detail: is32Bit == true ? "64-bit games only" : GraphicsLayer.d3dMetal.summary)
-                    .selectionDisabled(is32Bit == true)
-            }
-            layerOption(.dxmt, detail: GraphicsLayer.dxmt.summary)
-            layerOption(.dxvk, detail: is32Bit == true ? "64-bit games only" : GraphicsLayer.dxvk.summary)
-                .selectionDisabled(is32Bit == true)
-            if !toolkitAdded {
-                Divider()
-                VStack {
-                    Text("Add D3DMetal…")
-                    Text("From Apple's Game Porting Toolkit")
-                }
-                .tag(LayerChoice.addToolkit)
-            }
-        } label: {
-            Text("Graphics Layer")
-            if let layerCaption {
-                Text(layerCaption)
-            }
-        }
-        .disabled(model.isBusy)
-    }
-
-    private func layerOption(_ layer: GraphicsLayer, detail: String) -> some View {
-        VStack {
-            Text(layer.title)
-            Text(detail)
-        }
-        .tag(LayerChoice.layer(layer))
-    }
-
-    /// Choosing "Add D3DMetal…" opens the file panel and leaves the layer as it was.
-    private var layerChoice: Binding<LayerChoice> {
-        Binding {
-            .layer(draft.layer)
-        } set: { choice in
-            switch choice {
-            case let .layer(layer): draft.layer = layer
-            case .addToolkit: isChoosingToolkit = true
-            }
-        }
-    }
-
-    /// What Automatic comes to, in the pop-up.
-    private var automaticDetail: String {
-        switch GraphicsLayer.automaticChoice(is32Bit: is32Bit, toolkitAdded: toolkitAdded) {
-        case let layer?: "\(layer.title) for this game"
-        case nil: "Tannin picks when the game is installed"
-        }
-    }
-
-    /// Under the row: what Automatic uses for this game, and what the game ran on last time when its log says.
-    private var layerCaption: String? {
-        let ran = game.isInstalled ? model.layerUsage[game.appID] : nil
-        let ranSentence = ran.map { "It ran on \($0.title) last time." }
-        guard draft.layer == .automatic else { return ranSentence }
-        if ran == .wineOwn {
-            return "It ran on Wine's own layer last time, which is what Direct3D 9 games get."
-        }
-        let pick: String
-        switch (toolkitAdded, is32Bit) {
-        case (true, nil): pick = "Tannin picks when the game is installed."
-        case (true, false?): pick = "D3DMetal for this 64-bit game."
-        case (_, true?): pick = "DXMT for this 32-bit game."
-        case (false, _): pick = "DXMT for this game. Direct3D 12 games need Apple's toolkit."
-        }
-        return [pick, ranSentence].compactMap(\.self).joined(separator: " ")
     }
 
     private var launchOptionsPreview: String {

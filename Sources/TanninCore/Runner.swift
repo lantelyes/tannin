@@ -47,7 +47,7 @@ public struct Runner: Sendable {
     /// 32-bit detour a 32-bit game that needs Steam quits at once.
     public static let patchedArchitectures = ["x86_64", "i386"]
 
-    static let layersCheck = "Graphics layers"
+    static let layersCheck = "Renderers"
 
     public static var toolsLine: String { toolsLine(for: .newest) }
     public static func toolsLine(for spec: EngineSpec) -> String { "\(spec.toolName)\t\(spec.build)\t\(flavor)\t\(spec.display)" }
@@ -200,14 +200,14 @@ public struct Runner: Sendable {
             if !without.isEmpty {
                 checks.append(Check(Self.layersCheck, .attention, "DXMT is not in the runner yet (\(without.joined(separator: ", "))). Run: tannin upkeep run"))
             } else if !layers.isPrepared {
-                checks.append(Check(Self.layersCheck, .attention, "The files for choosing a layer per game are not in place. Run: tannin upkeep run"))
+                checks.append(Check(Self.layersCheck, .attention, "The files for choosing a renderer per game are not in place. Run: tannin upkeep run"))
             } else {
                 checks.append(Check(Self.layersCheck, .ok, "DXMT \(LayerStore.dxmtVersion) and DXVK \(LayerStore.dxvkVersion) are ready."))
             }
         }
         checks.append(exists(gptk)
             ? Check("D3DMetal", .ok, "Linked into the runner.")
-            : Check("D3DMetal", .info, "Not added. Games use DXMT; Direct3D 12 games need it: tannin gptk import <dmg>"))
+            : Check("D3DMetal", .info, "Not added. Games use DXMT; Direct3D 12 games need it: tannin d3dmetal add <disk image>"))
         return checks
     }
 }

@@ -32,6 +32,9 @@ struct RootView: View {
         .sheet(isPresented: $model.isShowingSteamPlaySheet) {
             SteamPlaySheet()
         }
+        .sheet(isPresented: $model.isShowingD3DMetalSheet) {
+            AddD3DMetalSheet()
+        }
         .alert("That didn't work", isPresented: $model.isShowingErrorInMain) {
             Button("OK") {}
         } message: {
@@ -52,8 +55,10 @@ struct RootView: View {
             } else {
                 NoGamesView()
             }
-        case .engine:
-            EngineView()
+        case .steamPlay:
+            SteamPlayView()
+        case .renderers:
+            RenderersView()
         case .logs:
             LogsView()
         case nil:

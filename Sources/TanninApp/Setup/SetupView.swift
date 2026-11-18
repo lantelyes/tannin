@@ -1,19 +1,16 @@
 import SwiftUI
 import TanninCore
-import UniformTypeIdentifiers
 
-/// The first-run window: six steps from a bare Mac to Windows games installing from Steam.
+/// The first-run window: five steps from a bare Mac to Windows games installing from Steam.
 /// Each step's state is read from disk, so the window can be closed and reopened at any point.
 struct SetupView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
-    @State private var isChoosingToolkit = false
     /// This window's own sheet, so asking here does not also open one on the main window.
     @State private var isAddingSteamPlay = false
 
-    /// A skipped step counts: it has been dealt with.
-    private var doneCount: Int { Setup.Step.allCases.count { model.setup[$0]?.isSettled == true } }
+    private var doneCount: Int { Setup.Step.allCases.count { model.setup[$0]?.isDone == true } }
     private var isAllDone: Bool { doneCount == Setup.Step.allCases.count }
 
     var body: some View {
@@ -38,8 +35,11 @@ struct SetupView: View {
             Form {
                 Section {
                     ForEach(Setup.Step.allCases) { step in
-                        SetupStepRow(step: step, isChoosingToolkit: $isChoosingToolkit, isAddingSteamPlay: $isAddingSteamPlay)
+                        SetupStepRow(step: step, isAddingSteamPlay: $isAddingSteamPlay)
                     }
+                } footer: {
+                    Text("Optional, at any time: add Apple's D3DMetal renderer under Engines & Renderers. Games that use Direct3D 12 need it.")
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .formStyle(.grouped)
@@ -64,7 +64,7 @@ struct SetupView: View {
             .padding(.bottom, 20)
         }
         .frame(width: 620)
-        .frame(minHeight: 650)
+        .frame(minHeight: 540)
         .sheet(isPresented: $isAddingSteamPlay) {
             SteamPlaySheet()
         }
@@ -72,11 +72,6 @@ struct SetupView: View {
             Button("OK") {}
         } message: {
             Text(model.errorMessage ?? "")
-        }
-        .fileImporter(isPresented: $isChoosingToolkit, allowedContentTypes: [.diskImage, .folder]) { result in
-            if case let .success(url) = result {
-                Task { await model.importToolkit(from: url) }
-            }
         }
     }
 

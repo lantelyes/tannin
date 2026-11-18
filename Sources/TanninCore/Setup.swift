@@ -1,10 +1,10 @@
 import Foundation
 
-/// The steps that take a Mac from nothing to "Windows games install from Steam", in the order the app shows them.
+/// The five steps that take a Mac from nothing to "Windows games install from Steam", in the order the app shows them.
 /// Each step's state is read from what is on disk, so setup can be left and picked up again at any point.
 public struct Setup: Sendable {
     public enum Step: String, CaseIterable, Sendable, Identifiable {
-        case rosetta, steam, engine, toolkit, bridge, steamPlay
+        case rosetta, steam, engine, bridge, steamPlay
 
         public var id: String { rawValue }
     }
@@ -16,20 +16,10 @@ public struct Setup: Sendable {
         case ready
         /// Needs something else first; the text says what.
         case waiting(String)
-        /// Left out on purpose. Only the toolkit step can be; the text says what that means.
-        case skipped(String)
 
         public var isDone: Bool {
             if case .done = self { return true }
             return false
-        }
-
-        /// Done, or deliberately left out: either way nothing is waiting on the user.
-        public var isSettled: Bool {
-            switch self {
-            case .done, .skipped: true
-            case .ready, .waiting: false
-            }
         }
     }
 
@@ -59,10 +49,6 @@ public struct Setup: Sendable {
             return SteamInstall(paths: paths).isInstalled ? .done("In Applications") : .ready
         case .engine:
             return Engine(paths: paths).isInstalled ? .done("Wine \(Pins.engineWine)") : .ready
-        case .toolkit:
-            if let toolkit = GPTK(paths: paths).imported().last { return .done("D3DMetal \(toolkit.version)") }
-            if toolkitIsSkipped { return .skipped("Skipped. Games use DXMT. You can add it later on the Engine page.") }
-            return .ready
         case .bridge:
             guard Engine(paths: paths).isInstalled else { return .waiting("Needs the Wine engine first") }
             let toolkit = GPTK(paths: paths).imported().last
@@ -83,23 +69,13 @@ public struct Setup: Sendable {
         Step.allCases.map { ($0, state(of: $0)) }
     }
 
-    /// What Steam Play cannot do without. Apple's toolkit is not among them: without it games run on DXMT.
+    /// What Steam Play cannot do without. D3DMetal is not among them, and is not a step at all: it is a renderer,
+    /// added on the Engines & Renderers page. Without it games run on DXMT.
     static let required: [Step] = [.rosetta, .steam, .engine, .bridge]
 
     /// True when everything is in place, whether or not Steam Play has been added to Steam yet.
     public var isReadyForSteamPlay: Bool {
         Self.required.allSatisfy { state(of: $0).isDone }
-    }
-
-    /// Whether the user chose to go without Apple's toolkit.
-    public var toolkitIsSkipped: Bool {
-        FileManager.default.fileExists(atPath: paths.toolkitSkipped.path)
-    }
-
-    /// Records that the user goes without Apple's toolkit for now. Importing it later clears this.
-    public func skipToolkit() throws {
-        try FileManager.default.createDirectory(at: paths.tannin, withIntermediateDirectories: true)
-        try Data().write(to: paths.toolkitSkipped)
     }
 
     // MARK: Doing the steps
@@ -113,16 +89,6 @@ public struct Setup: Sendable {
 
     public func installEngine(_ context: WorkContext = .terminal) throws {
         try Engine(paths: paths).install(context)
-    }
-
-    /// Imports D3DMetal from the user's own copy of Apple's toolkit and, if the runner is there, puts it to use.
-    @discardableResult
-    public func importToolkit(from source: URL) throws -> GPTK.Imported {
-        let toolkit = try GPTK(paths: paths).importToolkit(from: source)
-        try? FileManager.default.removeItem(at: paths.toolkitSkipped)
-        // Every installed engine's runner gets it: one D3DMetal at a time, for all of them.
-        try EngineStore(paths: paths).linkToolkit(toolkit)
-        return toolkit
     }
 
     /// Downloads the Steam add-on, bridge and Valve's client files, then assembles the runner Steam will launch.

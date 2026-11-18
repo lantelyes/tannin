@@ -29,10 +29,11 @@ enum Snapshotter {
             for scenario in Fixture.mainWindowScenarios where only.map({ scenario.name.hasPrefix($0) }) ?? true {
                 model.show(scenario.fixture)
                 updates.show(scenario.fixture.updates)
-                let isSheet = scenario.fixture.isShowingSteamPlaySheet
+                let isSheet = scenario.fixture.isShowingSteamPlaySheet || scenario.fixture.d3dMetalAdd != nil
                 await capture(WindowID.main, to: folder.appending(path: "\(scenario.name)-\(name).png"), sheet: isSheet)
                 if isSheet {
                     model.isShowingSteamPlaySheet = false
+                    model.isShowingD3DMetalSheet = false
                     try? await Task.sleep(for: .milliseconds(600))
                 }
             }
