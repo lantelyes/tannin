@@ -24,6 +24,21 @@
   <p class="lead">Every release of Tannin, newest first.</p>
   <section class="rel">
     <div>
+      <h2>0.3.0</h2>
+      <div class="date">18 November 2026</div>
+    </div>
+    <div class="changes">
+<ul>
+  <li>Each game can choose its graphics layer: <strong>D3DMetal</strong> (Apple’s), <strong>DXMT</strong> or <strong>DXVK</strong>. It starts on Automatic, which uses D3DMetal for 64-bit games and DXMT for 32-bit ones. The choice is on the game’s page, with the settings that belong to that layer.</li>
+  <li><strong>32-bit games that need Steam now start.</strong> Until now they quit at once.</li>
+  <li>Apple’s Game Porting Toolkit is optional. Without it games run on DXMT; games that use Direct3D 12 still need it. You can skip it in setup and add it later on the Engine page.</li>
+  <li>After updating, open <strong>Engine</strong> and press <strong>Add</strong> under "After the Update". It takes a few seconds, downloads nothing and does not change Steam.</li>
+  <li>The game’s page says which layer Automatic uses and, when the game’s log shows it, which layer the game ran on last time.</li>
+</ul>
+    </div>
+  </section>
+  <section class="rel">
+    <div>
       <h2>0.2.1</h2>
       <div class="date">18 November 2026</div>
     </div>
