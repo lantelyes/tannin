@@ -7,14 +7,14 @@
     <description>Updates for Tannin.</description>
     <language>en</language>
     <item>
-      <title>Tannin 0.2.0</title>
-      <pubDate>Wed, 18 Nov 2026 04:51:12 +0000</pubDate>
-      <sparkle:version>0.2.0</sparkle:version>
-      <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+      <title>Tannin 0.2.1</title>
+      <pubDate>Wed, 18 Nov 2026 04:53:59 +0000</pubDate>
+      <sparkle:version>0.2.1</sparkle:version>
+      <sparkle:shortVersionString>0.2.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
       <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-      <sparkle:releaseNotesLink>https://lantelyes.github.io/tannin/notes/0.2.0.html</sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/lantelyes/tannin/releases/download/v0.2.0/Tannin-0.2.0.zip" length="2222242" type="application/octet-stream" sparkle:edSignature="uY1+EbT7n9o+B2aog+XGHG9dE3ep7M3TSwLpDgKOiuz7EhBqFsCWQQGZJeuWX6f7LuClEN7cvfaoJYSuGMsxCQ=="/>
+      <sparkle:releaseNotesLink>https://lantelyes.github.io/tannin/notes/0.2.1.html</sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/lantelyes/tannin/releases/download/v0.2.1/Tannin-0.2.1.zip" length="2222246" type="application/octet-stream" sparkle:edSignature="TP4G/vzcwO4CCEWMuGqNr3R4tD+p+vhZ2bZHZJJY5BgVWIG6jeOvzhgTDQ7FTW52UIaFsE5FyD5mczt35Zf+Bw=="/>
     </item>
   </channel>
 </rss>

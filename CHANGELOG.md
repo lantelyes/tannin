@@ -3,7 +3,7 @@
 Every release, newest first, in plain words. `scripts/release.sh` refuses to make a release that
 has no section here, and the same text becomes the notes shown in the update window.
 
-## 0.2.1 (not released yet)
+## 0.2.1 (18 November 2026)
 
 - Nothing new to use. This release exists to prove that Tannin updates itself from its real
   website, before anyone else is asked to rely on that.
