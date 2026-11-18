@@ -353,3 +353,18 @@ their feed from `http://localhost:8765/`, served from a scratch folder on this M
   installed. `scripts/local-feed.sh <version>` builds, signs and serves a further test version when the Steam
   permission test is done.
 
+## 2026-11-18: 0.2.0 released, and the website is on
+
+- GitHub Pages serves `docs/` at https://lantelyes.github.io/tannin/ (http redirects to https). Every page and
+  image answered 200 and the live landing page was byte-identical to `docs/index.html`.
+- A dry run with the real key and certificate found a fault in `release.sh` itself: it compared the certificate's
+  fingerprint in the wrong letter case and so rejected a correctly signed app. Fixed before the real run.
+- The user ran `scripts/release.sh 0.2.0` and typed the yes. Result: tag `v0.2.0`, a pre-release with
+  `Tannin-0.2.0.zip`, and the feed, notes and Download button on the website.
+- Checked afterwards from the outside, without signing in: the download's SHA-256 equals the published one; the
+  signature in the live feed verifies against that download with the update key; the app inside is 0.2.0, arm64,
+  signed by "Tannin Local Signing" with the same requirement as the test builds, and carries the real feed address
+  and no local-test setting.
+- **Not shown yet:** an installed 0.2.0 finding and installing an update from the live feed. That is what 0.2.1
+  is for. The copy in `/Applications` on this Mac is still the local test build.
+
