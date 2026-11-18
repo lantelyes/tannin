@@ -16,6 +16,8 @@ struct GamePage: View {
     @State private var pendingMove: WineChoice?
     @State private var isConfirmingMove = false
     @State private var isConfirmingRestore = false
+    /// The fixed window chosen on the page, which may not be saved yet.
+    @State private var draftWindow: FixedWindow.Size?
 
     init(game: LibraryGame) {
         self.game = game
@@ -24,7 +26,11 @@ struct GamePage: View {
         _preset = State(initialValue: .custom)
     }
 
-    private var hasChanges: Bool { draft.settings != game.settings.normalized }
+    private var hasChanges: Bool { draft.settings != game.settings.normalized || draftWindow != savedWindow }
+
+    private var savedWindow: FixedWindow.Size? { model.fixedWindows[game.appID] }
+    private var hasEnvironment: Bool { model.gamesWithEnvironment.contains(game.appID) }
+    private var isRunning: Bool { model.runningGames.contains(game.appID) }
 
     /// A 32-bit or 64-bit game; unknown until it is installed.
     private var is32Bit: Bool? { game.isInstalled ? game.is32Bit : nil }
@@ -57,6 +63,7 @@ struct GamePage: View {
             if trimmed != draft { draft = trimmed }
         }
         .onChange(of: effectiveLayer, initial: true) { matchPreset() }
+        .onChange(of: savedWindow, initial: true) { draftWindow = savedWindow }
         .onChange(of: game.launchOptions) {
             // Saved, or changed in Steam itself: show what Steam has now.
             draft = SettingsDraft(game.settings)
@@ -131,6 +138,14 @@ struct GamePage: View {
                     .disabled(model.isBusy)
             }
         }
+        if game.isInstalled, hasEnvironment, !isRunning, savedWindow == nil, model.refusedScreenSize.contains(game.appID) {
+            NoticeRow(symbol: .warning, text: "This game asked for a screen size this Mac does not have, and stopped. A fixed window usually gets it going.") {
+                Button("Use \(FixedWindow.Size.usual.description)") {
+                    Task { await model.useFixedWindow(.usual, appID: game.appID) }
+                }
+                .disabled(model.isBusy)
+            }
+        }
         if game.isInstalled, let problem = model.problem {
             if problem == .steamUpdated {
                 SteamMovedNotice { isConfirmingRemoval = true }
@@ -197,6 +212,7 @@ struct GamePage: View {
                     }
                 }
                 Toggle("Performance Overlay", isOn: $draft.performanceHUD)
+                fixedWindowRow
                 wineVersionRow
                 LabeledContent("Launch Options") {
                     Text(launchOptionsPreview)
@@ -214,6 +230,38 @@ struct GamePage: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    // MARK: Fixed window
+
+    /// Shown for an installed game. It can only be set once the game has a Windows environment, which it gets at
+    /// its first start, and not while the game is running.
+    @ViewBuilder private var fixedWindowRow: some View {
+        if game.isInstalled {
+            Picker(selection: $draftWindow) {
+                Text("Off").tag(FixedWindow.Size?.none)
+                Divider()
+                ForEach(offeredSizes) { size in
+                    Text(size.description).tag(FixedWindow.Size?.some(size))
+                }
+            } label: {
+                Text("Fixed Window")
+                Text(fixedWindowCaption)
+            }
+            .disabled(!hasEnvironment || isRunning || model.isBusy)
+        }
+    }
+
+    private var fixedWindowCaption: String {
+        if !hasEnvironment { return "Available once the game has been started for the first time." }
+        if isRunning { return "Quit the game to change this." }
+        return "For old games that need a screen shape this Mac does not have. The game runs in a window of this size."
+    }
+
+    /// The sizes whose window fits this Mac's screen, and whichever one is set already.
+    private var offeredSizes: [FixedWindow.Size] {
+        let room = NSScreen.main?.visibleFrame.size ?? CGSize(width: 1280, height: 720)
+        return FixedWindow.sizes(fittingWidth: room.width, height: room.height, including: draftWindow ?? savedWindow)
     }
 
     // MARK: Wine version
@@ -433,7 +481,8 @@ struct GamePage: View {
     }
 
     private func requestSave() {
-        if model.status?.steamRunning == true {
+        // Steam only has to quit when something kept in Steam changed.
+        if model.savingNeedsSteamClosed(draft.settings, game: game) {
             isConfirmingQuit = true
         } else {
             save()
@@ -442,6 +491,7 @@ struct GamePage: View {
 
     private func save() {
         let settings = draft.settings
-        Task { await model.save(settings, appID: game.appID) }
+        let window = draftWindow
+        Task { await model.save(settings, fixedWindow: window, appID: game.appID) }
     }
 }

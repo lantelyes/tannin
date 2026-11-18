@@ -3,6 +3,15 @@
 Every release, newest first, in plain words. `scripts/release.sh` refuses to make a release that
 has no section here, and the same text becomes the notes shown in the update window.
 
+## 0.5.0 (not released yet)
+
+- **Fixed Window**, a new setting on a game's page under Advanced. Some old games insist on a
+  screen shape a Mac's display does not have and stop with an error; Silent Hunter III is one.
+  Choose a size and the game runs in a window of that size, which it takes for the whole screen.
+- When a game stops for that reason, its page says so and offers **Use 1024 × 768**.
+- The setting is kept with the game, not in Steam, so Steam does not have to quit to save it. A
+  game has to have been started once before it can be set.
+
 ## 0.4.0 (not released yet)
 
 - **A second Wine version.** Wine 11.17 can be installed beside 11.19 from the Engine page, with

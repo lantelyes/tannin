@@ -21,6 +21,11 @@ struct Fixture {
     var gameEngines: [String: GameEngine] = [:]
     var environmentCopies: [String: EnvironmentCopy.Info] = [:]
     var recentlyMoved: Set<String> = []
+    var fixedWindows: [String: FixedWindow.Size] = [:]
+    /// The fixtures' games have all been started, unless a scenario says otherwise.
+    var gamesWithEnvironment: Set<String> = ["1544360", "50300"]
+    var runningGames: Set<String> = []
+    var refusedScreenSize: Set<String> = []
 
     /// Every drawn state of the main window, by the name its picture is saved under.
     static var mainWindowScenarios: [(name: String, fixture: Fixture)] {
@@ -53,6 +58,11 @@ struct Fixture {
             ("game-wine-moved", wineVersion(pin: .wine1117, justMoved: true)),
             ("game-wine-removed", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
                                           gameEngines: [lego.appID: GameEngine(pin: .wine1117, runsOn: .wine1119)])),
+            ("game-fixed-window", fixedWindow(size: .usual)),
+            ("game-fixed-window-off", fixedWindow(size: nil)),
+            ("game-fixed-window-notice", fixedWindow(size: nil, refused: true)),
+            ("game-fixed-window-never-started", fixedWindow(size: nil, started: false)),
+            ("game-fixed-window-running", fixedWindow(size: .usual, running: true)),
             ("logs", Fixture(status: ready, library: library, logLines: log, selection: .logs)),
             ("empty", Fixture(status: ready, library: .empty, selection: nil)),
             ("not-installed", Fixture(status: ready, library: library, selection: .game(silentHunter.appID))),
@@ -138,6 +148,17 @@ struct Fixture {
                        environmentCopies: pin == nil ? [:] : [lego.appID: copy], recentlyMoved: justMoved ? [lego.appID] : [])
     }
 
+    /// An old Direct3D 9 game's page in each state of its Fixed Window row.
+    private static func fixedWindow(size: FixedWindow.Size?, refused: Bool = false, started: Bool = true, running: Bool = false) -> Fixture {
+        let game = silentHunterInstalled
+        return Fixture(status: ready, library: Library(installed: [lego, game], notInstalled: [specOps]), selection: .game(game.appID),
+                       layerUsage: started ? [game.appID: .wineOwn] : [:],
+                       fixedWindows: size.map { [game.appID: $0] } ?? [:],
+                       gamesWithEnvironment: started ? [lego.appID, game.appID] : [lego.appID],
+                       runningGames: running ? [game.appID] : [],
+                       refusedScreenSize: refused ? [game.appID] : [])
+    }
+
     private static let ready = status()
     private static let steamUpdated = status(addonLoaded: false)
     private static let steamPlayOff = status(steamPlay: .off, addonLoaded: nil)
@@ -177,6 +198,7 @@ struct Fixture {
     private static let specOps = game("50300", "Spec Ops: The Line", install: .notInstalled)
     private static let specOpsInstalled = game("50300", "Spec Ops: The Line", install: .installed, size: 7_800_000_000, is32Bit: true)
     private static let silentHunter = game("15210", "Silent Hunter III", install: .notInstalled)
+    private static let silentHunterInstalled = game("15210", "Silent Hunter III", install: .installed, size: 2_610_000_000, is32Bit: true)
     private static let library = Library(installed: [lego], notInstalled: [silentHunter, specOps])
     private static let twoGames = Library(installed: [lego, specOpsInstalled], notInstalled: [silentHunter])
 

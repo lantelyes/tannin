@@ -30,6 +30,13 @@ final class AppModel {
     /// Games moved to another Wine version since the app opened, for the notice on their page.
     private(set) var recentlyMoved: Set<String> = []
     private var engineSizes: [String: Int64] = [:]
+    /// The fixed window each game is set to run in, for those that have one.
+    private(set) var fixedWindows: [String: FixedWindow.Size] = [:]
+    /// Games that have a Windows environment, which is where a fixed window is kept.
+    private(set) var gamesWithEnvironment: Set<String> = []
+    private(set) var runningGames: Set<String> = []
+    /// Games whose last start was refused the screen size they asked for.
+    private(set) var refusedScreenSize: Set<String> = []
     /// A plain description of the action in progress, or nil.
     private(set) var activity: String?
     private(set) var errorMessage: String?
@@ -105,6 +112,18 @@ final class AppModel {
                     copies[appID] = EnvironmentCopy(paths: paths).info(appID: appID)
                 }
             }
+            // Fixed windows: where one is set, where one can be, and which games asked for a size they did not get.
+            let window = FixedWindow(paths: paths)
+            var fixedWindows: [String: FixedWindow.Size] = [:]
+            var withEnvironment: Set<String> = []
+            var running: Set<String> = []
+            var refused: Set<String> = []
+            for appID in games where window.hasEnvironment(appID: appID) {
+                withEnvironment.insert(appID)
+                fixedWindows[appID] = window.size(appID: appID)
+                if window.isRunning(appID: appID) { running.insert(appID) }
+                if GameLogSigns.refusedScreenSize(appID: appID, paths: paths) { refused.insert(appID) }
+            }
             var sizes = knownSizes
             let rows = EngineSpec.all.map { spec in
                 let isInstalled = store.isInstalled(spec)
@@ -120,6 +139,10 @@ final class AppModel {
                 engineSizes: sizes,
                 gameEngines: gameEngines,
                 copies: copies,
+                fixedWindows: fixedWindows,
+                withEnvironment: withEnvironment,
+                running: running,
+                refused: refused,
                 logLines: LogReader(paths: paths).recentLines(),
                 setup: Setup(paths: paths).states(),
                 upkeep: Upkeep(paths: paths).plan(),
@@ -144,6 +167,10 @@ final class AppModel {
         engineSizes = snapshot.engineSizes
         if gameEngines != snapshot.gameEngines { gameEngines = snapshot.gameEngines }
         if environmentCopies != snapshot.copies { environmentCopies = snapshot.copies }
+        if fixedWindows != snapshot.fixedWindows { fixedWindows = snapshot.fixedWindows }
+        if gamesWithEnvironment != snapshot.withEnvironment { gamesWithEnvironment = snapshot.withEnvironment }
+        if runningGames != snapshot.running { runningGames = snapshot.running }
+        if refusedScreenSize != snapshot.refused { refusedScreenSize = snapshot.refused }
         reconcileSelection()
     }
 
@@ -180,6 +207,10 @@ final class AppModel {
         gameEngines = fixture.gameEngines
         environmentCopies = fixture.environmentCopies
         recentlyMoved = fixture.recentlyMoved
+        fixedWindows = fixture.fixedWindows
+        gamesWithEnvironment = fixture.gamesWithEnvironment
+        runningGames = fixture.runningGames
+        refusedScreenSize = fixture.refusedScreenSize
     }
 
     /// Goes back to what is really on this Mac.
@@ -242,17 +273,40 @@ final class AppModel {
         }
     }
 
-    /// Writes a game's settings into its Steam launch options. Steam is quit first if needed, then reopened.
-    func save(_ settings: GameSettings, appID: String) async {
+    /// Saves what a game's page holds. Settings go into the game's Steam launch options, for which Steam is quit
+    /// first if it is open and reopened afterwards. The fixed window goes into the game's Windows environment,
+    /// and Steam is left alone when nothing else changed.
+    func save(_ settings: GameSettings, fixedWindow: FixedWindow.Size?, appID: String) async {
         let paths = paths
         await perform("Saving game settings") {
-            let wasRunning = SteamInstall(paths: paths).isRunning()
-            if wasRunning { try SteamAddon(paths: paths).stopSteam() }
             let config = SteamConfig(paths: paths)
             let engine = EngineStore(paths: paths).engine(for: appID) ?? .newest
-            let options = settings.launchOptions(merging: config.launchOptions(appID: appID) ?? "", engine: engine)
-            try config.setLaunchOptions(appID: appID, options)
-            if wasRunning { try? SteamLauncher(paths: paths).openSteam() }
+            let existing = config.launchOptions(appID: appID) ?? ""
+            let options = settings.launchOptions(merging: existing, engine: engine)
+            if options != existing {
+                let wasRunning = SteamInstall(paths: paths).isRunning()
+                if wasRunning { try SteamAddon(paths: paths).stopSteam() }
+                defer { if wasRunning { try? SteamLauncher(paths: paths).openSteam() } }
+                try config.setLaunchOptions(appID: appID, options)
+            }
+            let window = FixedWindow(paths: paths)
+            if window.hasEnvironment(appID: appID), window.size(appID: appID) != fixedWindow {
+                try window.set(fixedWindow, appID: appID)
+            }
+        }
+    }
+
+    /// Whether saving these settings will have to quit Steam.
+    func savingNeedsSteamClosed(_ settings: GameSettings, game: LibraryGame) -> Bool {
+        status?.steamRunning == true
+            && settings.launchOptions(merging: game.launchOptions, engine: engine(for: game.appID)) != game.launchOptions
+    }
+
+    /// Gives a game a fixed window straight away, from the notice that suggests it.
+    func useFixedWindow(_ size: FixedWindow.Size, appID: String) async {
+        let paths = paths
+        await perform("Setting a fixed window") {
+            try FixedWindow(paths: paths).set(size, appID: appID)
         }
     }
 

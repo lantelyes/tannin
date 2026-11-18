@@ -89,7 +89,9 @@ public struct LogReader: Sendable {
             for game in games {
                 let bits = game.is32Bit.map { $0 ? "32-bit" : "64-bit" } ?? "bits unknown"
                 let ran = LayerUsage.lastRun(appID: game.appID, is32Bit: game.is32Bit, paths: paths).map { ", last ran on \($0.title)" } ?? ""
-                out.append("\(game.name) (\(game.appID)): \(bits), layer \(game.settings.layer.title), Wine \(status.engineWine)\(ran)")
+                let wine = EngineStore(paths: paths).engine(for: game.appID)?.wine ?? status.engineWine
+                let window = FixedWindow(paths: paths).size(appID: game.appID).map { ", fixed window \($0)" } ?? ""
+                out.append("\(game.name) (\(game.appID)): \(bits), layer \(game.settings.layer.title), Wine \(wine)\(ran)\(window)")
             }
         }
         out += [
