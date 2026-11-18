@@ -9,9 +9,9 @@ has no section here, and the same text becomes the notes shown in the update win
   They no longer begin grey and turn to colour as setup goes: that change was not smooth, and it is
   gone. Nothing in the row moves or changes while setup runs.
 - **The covers are fetched from Steam** the first time the setup window opens, about 450 KB, and kept
-  on your Mac afterwards. This is the one thing Tannin fetches before you press anything. While they
-  are on their way, each place holds its cover's colours; then all seven come in together. Offline,
-  the colours stay. With Reduce Motion on, the pictures appear without a fade.
+  on your Mac afterwards. That happens when the window opens, before you press Set Up. While they are
+  on their way, each place holds its cover's colours; then all seven come in together. Offline, the
+  colours stay. With Reduce Motion on, the pictures appear without a fade.
 - **The window no longer flashes back to the Set Up button** between downloading the Wine engine and
   the Steam bridge.
 - **Resume and Try Again start the bar where it stopped,** not from the beginning.
