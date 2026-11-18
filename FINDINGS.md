@@ -240,3 +240,15 @@ which is a manual step. With the `.icns` alone, macOS shows the default appearan
 - **Release zip:** `scripts/package.sh` makes `dist/Tannin-0.1.0.zip` (about 1 MB, arm64 only, no bundled libraries).
   The unzipped app's signature verifies. It is ad-hoc signed: this Mac has no Developer ID certificate, so anyone who
   downloads it has to choose Open Anyway in System Settings once. Not tried on a second Mac.
+
+## 2026-11-18: published
+
+- The project is public at https://github.com/lantelyes/tannin, and `v0.1.0` is out as a pre-release with
+  `Tannin-0.1.0.zip`. This replaces the earlier "local git only" rule.
+- Before the first push the local commits were rewritten to carry GitHub's private email address; names, dates,
+  messages and the final tree are unchanged. Checked on GitHub afterwards: every commit shows only that address,
+  only `main` and the tag were pushed, and the file list matches.
+- The release was downloaded without signing in: the SHA-256 matches, the app unzips with a valid ad-hoc signature,
+  and `spctl` rejects it, which is the expected "Open Anyway" case described in the README. Opening the downloaded
+  copy by hand, and everything on a second Mac, is still untried.
+- The app's bundle identifier is now `io.github.lantelyes.Tannin`.

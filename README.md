@@ -34,19 +34,19 @@
 
 ## A look around
 
-| Setup | Engine |
-|:---:|:---:|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/setup-dark.png"><img src="docs/screenshots/setup-light.png" width="400" alt="The Set Up Tannin window: six steps, with the Wine engine downloading"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/engine-dark.png"><img src="docs/screenshots/engine-light.png" width="400" alt="The Engine page: Steam Play, the Wine engine, D3DMetal and the Steam bridge"></picture> |
-| Six steps, each one saying what it does. The last is the only one that changes Steam, and it asks first. | What is installed, at which version, and the switch that removes Steam Play again. |
-
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/logs-dark.png">
-    <img src="docs/screenshots/logs-light.png" width="620" alt="The Logs page: a table of what the Steam add-on did, with a button to copy details for a bug report">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/setup-dark.png">
+    <img src="docs/screenshots/setup-light.png" width="440" alt="The Set Up Tannin window: six steps, with the Wine engine downloading">
   </picture>
   <br>
-  <sub>Logs, with one button that copies everything a bug report needs.</sub>
+  <sub>Setup is six steps, each one saying what it does. The last is the only one that changes Steam, and it asks first.</sub>
 </p>
+
+| Engine | Logs |
+|:---:|:---:|
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/engine-dark.png"><img src="docs/screenshots/engine-light.png" width="400" alt="The Engine page: Steam Play, the Wine engine, D3DMetal and the Steam bridge"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/logs-dark.png"><img src="docs/screenshots/logs-light.png" width="400" alt="The Logs page: a table of what the Steam add-on did, with a button to copy details for a bug report"></picture> |
+| What is installed, at which version, and the button that removes Steam Play again. | What the Steam add-on did, with one button that copies everything a bug report needs. |
 
 ## What you need
 
