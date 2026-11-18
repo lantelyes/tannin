@@ -29,6 +29,9 @@ cp "$products/TanninApp" "$app/Contents/MacOS/Tannin"
 ditto "$products/Sparkle.framework" "$app/Contents/Frameworks/Sparkle.framework"
 install_name_tool -add_rpath @executable_path/../Frameworks "$app/Contents/MacOS/Tannin" 2> /dev/null
 cp .build/checkouts/Sparkle/LICENSE "$app/Contents/Resources/Sparkle-LICENSE.txt"
+# The package manager keeps its checkouts read-only. A read-only file inside the app cannot have the
+# mark macOS puts on downloads taken off it, which moving the app to Applications needs to do.
+chmod -R u+w "$app"
 
 # Icon: one 1024 px drawing, scaled into every size macOS asks for.
 iconset="build/AppIcon.iconset"

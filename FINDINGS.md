@@ -313,3 +313,39 @@ What exists, and how far each part has been taken. Nothing here has been publish
   the screen instead.
 - Tests: 54 pass here. The tests workflow on GitHub passed on its first run (Swift 6.3 on `macos-26`).
 
+## 2026-11-18: the update key, the certificate, and the local update test
+
+Done with the user at the Mac. Test builds 0.1.90, 0.1.91 and 0.1.92 were signed with the certificate and read
+their feed from `http://localhost:8765/`, served from a scratch folder on this Mac. Nothing was published.
+
+- **Update key:** made with Sparkle's `generate_keys`; the private half is in the login Keychain only. The public
+  half is in `scripts/bundle.sh`, so builds now carry a feed address and updating is on.
+- **Certificate "Tannin Local Signing":** self-signed, code-signing use, valid to November 2036, made with
+  `/usr/bin/openssl` and imported with `security import -T /usr/bin/codesign`; the temporary files were deleted in
+  the same step. **`codesign` uses it without it being trusted** (macOS lists it as `CSSMERR_TP_NOT_TRUSTED`, and
+  signing works). The app's requirement becomes `identifier "io.github.lantelyes.Tannin" and certificate leaf =
+  H"9bf3abaf…5fbf"`, the same for every build.
+- **A downloaded copy.** 0.1.90 was put in Downloads carrying the mark Safari puts on downloads. macOS refused it,
+  the user chose Open Anyway, and Tannin, running from macOS's hidden folder, asked to move itself. **The move
+  worked:** Tannin reopened from `/Applications`, no file in the copy still carried the download mark, and the copy
+  in Downloads was gone. So `SecTranslocateCreateOriginalPathForURL` found by name, opening the new copy as a second
+  instance, and trashing the running original all work on macOS 27.2. (The Trash could not be read from the
+  terminal to see the old copy in it.)
+- **The update.** Check for Updates… offered 0.1.91 with its notes, and Install Update replaced the app and
+  relaunched it as 0.1.91 with the same signing requirement and no download mark. **macOS showed nothing extra:**
+  no password prompt, no Gatekeeper warning, no "was prevented from modifying apps" notice. A second update, to
+  0.1.92, went the same way.
+- **Refusals.** A download with one byte changed, and the genuine download offered with a signature made by a
+  different key, were each refused with "The update is improperly signed and could not be validated", and the
+  installed version did not change.
+- **Daily check.** With the stored last-check time wound back three days, the update window opened by itself
+  about five seconds after launch. In a control launch straight afterwards, without winding back, it did not.
+- **Settings with real data:** after a real check the Updates group read "Tannin 0.1.92 is available / You have
+  0.1.91" with an Update… button. The sidebar row, the menu bar line and the Steam-updated notice have still only
+  been seen with prepared data, because this Mac is not set up and has no Steam Play.
+- **Found by the test:** Sparkle's licence text was copied into the app read-only, and the download mark cannot
+  be taken off a read-only file. `bundle.sh` now makes everything in the app writable.
+- **Not done yet:** whether the permission to change Steam survives an update (needs setup and Add Steam Play
+  first); Sparkle declining to update a copy still running from Downloads (the move was accepted, so that path was
+  not taken); anything on a second Mac; anything against the real feed address.
+
