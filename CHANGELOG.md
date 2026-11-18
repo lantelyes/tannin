@@ -3,7 +3,7 @@
 Every release, newest first, in plain words. `scripts/release.sh` refuses to make a release that
 has no section here, and the same text becomes the notes shown in the update window.
 
-## 0.6.0 (not released yet)
+## 0.6.0 (18 November 2026)
 
 - **Engines & Renderers**, a new page. The Wine engines and the three renderers are two lists that
   work the same way, and each row says how many of your games use it. Apple's D3DMetal is a renderer

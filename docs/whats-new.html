@@ -24,6 +24,26 @@
   <p class="lead">Every release of Tannin, newest first.</p>
   <section class="rel">
     <div>
+      <h2>0.6.0</h2>
+      <div class="date">18 November 2026</div>
+    </div>
+    <div class="changes">
+<ul>
+  <li><strong>Engines &amp; Renderers</strong>, a new page. The Wine engines and the three renderers are two lists that work the same way, and each row says how many of your games use it. Apple’s D3DMetal is a renderer like DXMT and DXVK: it is added, replaced and removed there. "Graphics layer" is now "renderer".</li>
+  <li><strong>A game’s page starts with what it runs on:</strong> its Wine version and its renderer, side by side. The settings under them are named for the renderer the game really gets.</li>
+  <li><strong>Both can be fetched from the game’s page.</strong> The Renderer pop-up offers D3DMetal when it is not on your Mac. The Wine Version pop-up offers a version that is not installed; Tannin downloads it with Steam left open, then asks before it moves the game.</li>
+  <li><strong>Adding D3DMetal</strong> is a small sheet that says where to get Apple’s Game Porting Toolkit and takes the disk image, which can also be dropped on it. It says why when a disk image is not accepted.</li>
+  <li><strong>D3DMetal can be removed.</strong> Games then run on DXMT. Your disk image is not touched.</li>
+  <li><strong>Steam Play has a page of its own</strong>, with the switch, the update freeze and the Steam bridge.</li>
+  <li><strong>A new setup window.</strong> It shows your own Windows games across the top, grey until Steam can install them, and they come into colour as the download goes. One button starts everything; the window stops once, to ask before it adds Steam Play, and ends on Show My Games. The Game Porting Toolkit step is gone. A failed download or a refusal by macOS is said in the window, with what to do about it.</li>
+  <li>Setup now says the true size of what it downloads: about 650 MB. The old figure left out the files from Valve that the Steam bridge needs.</li>
+  <li>When a game asks for Direct3D 12 and stops because D3DMetal is not there, its page says so.</li>
+  <li>Nothing on your Mac moves with this update, and every game keeps the choice it had.</li>
+</ul>
+    </div>
+  </section>
+  <section class="rel">
+    <div>
       <h2>0.5.0</h2>
       <div class="date">18 November 2026</div>
     </div>
