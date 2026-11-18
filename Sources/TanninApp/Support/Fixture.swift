@@ -11,6 +11,8 @@ struct Fixture {
     var setupProgress: SetupProgress?
     var selection: SidebarSelection?
     var isShowingSteamPlaySheet = false
+    /// What Tannin knows about its own updates; nil is a copy that cannot update itself.
+    var updates: UpdateStatus?
 
     /// Every drawn state of the main window, by the name its picture is saved under.
     static var mainWindowScenarios: [(name: String, fixture: Fixture)] {
@@ -24,7 +26,17 @@ struct Fixture {
                                selection: .game(specOpsInstalled.appID))),
             ("attention", Fixture(status: steamUpdated, library: library, selection: .game(lego.appID))),
             ("sheet", Fixture(status: steamPlayOff, library: library, selection: .engine, isShowingSteamPlaySheet: true)),
+            ("update", Fixture(status: ready, library: library, selection: .game(lego.appID), updates: newer)),
+            ("steam-moved-update", steamMoved(newer)),
+            ("steam-moved-none", steamMoved(.upToDate)),
+            ("steam-moved-checking", steamMoved(.checking)),
+            ("steam-moved-failed", steamMoved(offline)),
         ]
+    }
+
+    /// Every drawn state of the Updates group in Settings.
+    static var settingsScenarios: [(name: String, updates: UpdateStatus?)] {
+        [("plain", nil), ("up-to-date", .upToDate), ("checking", .checking), ("update", newer), ("failed", offline)]
     }
 
     /// The setup window part-way through the engine download.
@@ -61,6 +73,13 @@ struct Fixture {
     private static let ready = status()
     private static let steamUpdated = status(addonLoaded: false)
     private static let steamPlayOff = status(steamPlay: .off, addonLoaded: nil)
+
+    private static let newer = UpdateStatus.available(version: "0.2.1")
+    private static let offline = UpdateStatus.failed("This Mac appears to be offline.")
+
+    private static func steamMoved(_ updates: UpdateStatus) -> Fixture {
+        Fixture(status: steamUpdated, library: library, selection: .game(lego.appID), updates: updates)
+    }
 
     /// Artwork comes from Steam's own cache on this Mac, when it has the game.
     private static func game(_ appID: String, _ name: String, install: LibraryGame.Install, size: Int64? = nil,

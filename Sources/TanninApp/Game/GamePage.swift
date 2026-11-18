@@ -81,19 +81,19 @@ struct GamePage: View {
 
     @ViewBuilder private var notices: some View {
         if game.isInstalled, let problem = model.problem {
-            NoticeRow(symbol: problem.isWarning ? .warning : .info, text: problem.explanation) {
-                switch problem {
-                case .steamUpdated:
-                    Button("Show Logs") { model.selection = .logs }
-                    Button("Remove Steam Play…") { isConfirmingRemoval = true }
-                        .disabled(model.isBusy)
-                case .off:
-                    Button("Add Steam Play…") { model.isShowingSteamPlaySheet = true }
-                        .disabled(model.isBusy)
-                case .setupIncomplete:
-                    Button("Continue Setup…") { openWindow(id: WindowID.setup) }
-                case .otherTool, .steamMissing:
-                    EmptyView()
+            if problem == .steamUpdated {
+                SteamMovedNotice { isConfirmingRemoval = true }
+            } else {
+                NoticeRow(symbol: problem.isWarning ? .warning : .info, text: problem.explanation) {
+                    switch problem {
+                    case .off:
+                        Button("Add Steam Play…") { model.isShowingSteamPlaySheet = true }
+                            .disabled(model.isBusy)
+                    case .setupIncomplete:
+                        Button("Continue Setup…") { openWindow(id: WindowID.setup) }
+                    case .otherTool, .steamMissing, .steamUpdated:
+                        EmptyView()
+                    }
                 }
             }
         }

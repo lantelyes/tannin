@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct TanninApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var model = AppModel()
     @State private var updates = Updates()
     @AppStorage("showMenuBarItem") private var showMenuBarItem = false
@@ -35,6 +36,7 @@ struct TanninApp: App {
         MenuBarExtra(isInserted: $showMenuBarItem) {
             MenuBarContent()
                 .environment(model)
+                .environment(updates)
         } label: {
             Image(nsImage: MenuBarGlyph.image)
                 .accessibilityLabel("Tannin")

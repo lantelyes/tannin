@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import Sparkle
+import TanninCore
 
 /// Tannin's own updates: a thin layer over Sparkle that views can observe.
 ///
@@ -12,11 +13,11 @@ final class Updates: NSObject {
     private(set) var lastChecked: Date?
     /// False while Sparkle is busy, and always false when updating is not set up for this copy.
     private(set) var canCheck = false
+    /// Whether this copy can update itself at all.
+    private(set) var canUpdate = false
 
     /// The version of this copy of Tannin, as shown to people.
     let currentVersion: String
-    /// Sparkle refuses to update an app that is not in an Applications folder.
-    let isInApplications: Bool
 
     @ObservationIgnored private var controller: SPUStandardUpdaterController?
     @ObservationIgnored private var canCheckObservation: NSKeyValueObservation?
@@ -25,14 +26,13 @@ final class Updates: NSObject {
     /// or a screenshot run has neither, so Sparkle is never started there.
     init(bundle: Bundle = .main, isTakingScreenshots: Bool = Snapshotter.outputFolder != nil) {
         currentVersion = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        isInApplications = Self.isInApplicationsFolder(bundle.bundleURL)
         super.init()
 
-        let hasFeed = bundle.object(forInfoDictionaryKey: "SUFeedURL") is String
-        guard hasFeed, bundle.bundleURL.pathExtension == "app", !isTakingScreenshots else { return }
+        guard Self.hasFeed(bundle), !isTakingScreenshots else { return }
 
         let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
         self.controller = controller
+        canUpdate = true
         lastChecked = controller.updater.lastUpdateCheckDate
         canCheckObservation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] _, change in
             let value = change.newValue ?? false
@@ -40,14 +40,16 @@ final class Updates: NSObject {
         }
     }
 
-    /// Whether this copy can update itself at all.
-    var isAvailable: Bool { controller != nil }
+    /// Whether this copy was built with an update feed.
+    static func hasFeed(_ bundle: Bundle) -> Bool {
+        bundle.bundleURL.pathExtension == "app" && bundle.object(forInfoDictionaryKey: "SUFeedURL") is String
+    }
 
     /// The daily check. Tannin always asks before it installs anything.
     var checksAutomatically: Bool {
         get {
             access(keyPath: \.checksAutomatically)
-            return controller?.updater.automaticallyChecksForUpdates ?? false
+            return controller?.updater.automaticallyChecksForUpdates ?? true
         }
         set {
             withMutation(keyPath: \.checksAutomatically) {
@@ -56,10 +58,11 @@ final class Updates: NSObject {
         }
     }
 
-    /// "Check for Updates…": Sparkle's own windows report the result.
+    /// "Check for Updates…": Sparkle's own windows report the result. When an update is already
+    /// known, this brings up the window that offers it.
     func checkNow() {
         guard let controller, controller.updater.canCheckForUpdates else { return }
-        status = .checking
+        if case .available = status {} else { status = .checking }
         controller.checkForUpdates(nil)
     }
 
@@ -70,10 +73,25 @@ final class Updates: NSObject {
         updater.checkForUpdateInformation()
     }
 
-    static func isInApplicationsFolder(_ bundleURL: URL) -> Bool {
-        let folder = bundleURL.deletingLastPathComponent().standardizedFileURL.path
-        let home = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Applications").path
-        return folder == "/Applications" || folder == home
+    /// Shows a prepared state in place of the real one. Used only to take screenshots, where Sparkle
+    /// is never started; `nil` is a copy that cannot update itself.
+    func show(_ prepared: UpdateStatus?) {
+        canUpdate = prepared != nil
+        status = prepared ?? .unknown
+        canCheck = prepared != nil && prepared != .checking
+        lastChecked = prepared == nil ? nil : Calendar.current.date(bySettingHour: 9, minute: 41, second: 0, of: .now)
+    }
+
+    /// Why a check failed, in a short sentence.
+    private static func reason(for error: NSError) -> String {
+        if error.domain == SUSparkleErrorDomain, error.code == Int(SUError.runningTranslocated.rawValue) {
+            return "Tannin has to be in the Applications folder first."
+        }
+        let offline = [NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed]
+        if let cause = error.userInfo[NSUnderlyingErrorKey] as? NSError, cause.domain == NSURLErrorDomain, offline.contains(cause.code) {
+            return "This Mac appears to be offline."
+        }
+        return error.localizedDescription
     }
 }
 
@@ -99,7 +117,7 @@ extension Updates: SPUUpdaterDelegate {
         } else if case .available = status {
             // An update was found; a later error in the same cycle does not change that.
         } else {
-            status = .failed(error.localizedDescription)
+            status = .failed(Self.reason(for: error))
         }
     }
 }

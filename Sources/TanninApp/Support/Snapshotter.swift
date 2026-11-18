@@ -10,7 +10,8 @@ enum Snapshotter {
         ProcessInfo.processInfo.environment["TANNIN_SNAPSHOT_DIR"].map { URL(fileURLWithPath: $0) }
     }
 
-    static func run(model: AppModel, into folder: URL, openWindow: (String) -> Void) async {
+    static func run(model: AppModel, updates: Updates, into folder: URL,
+                    openWindow: (String) -> Void, openSettings: () -> Void) async {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try? await Task.sleep(for: .milliseconds(600))
         window(WindowID.main)?.setContentSize(NSSize(width: 940, height: 640))
@@ -27,6 +28,7 @@ enum Snapshotter {
 
             for scenario in Fixture.mainWindowScenarios {
                 model.show(scenario.fixture)
+                updates.show(scenario.fixture.updates)
                 let isSheet = scenario.fixture.isShowingSteamPlaySheet
                 await capture(WindowID.main, to: folder.appending(path: "\(scenario.name)-\(name).png"), sheet: isSheet)
                 if isSheet {
@@ -34,7 +36,20 @@ enum Snapshotter {
                     try? await Task.sleep(for: .milliseconds(600))
                 }
             }
+
+            captureQuestion(to: folder.appending(path: "move-\(name).png"))
         }
+
+        openSettings()
+        for (name, appearance) in appearances {
+            NSApp.appearance = NSAppearance(named: appearance)
+            for scenario in Fixture.settingsScenarios {
+                updates.show(scenario.updates)
+                await capture(settingsWindowID, to: folder.appending(path: "settings-\(scenario.name)-\(name).png"))
+            }
+        }
+        window(settingsWindowID)?.close()
+        updates.show(nil)
 
         openWindow(WindowID.setup)
         for (name, appearance) in appearances {
@@ -45,9 +60,33 @@ enum Snapshotter {
         NSApp.terminate(nil)
     }
 
+    /// The name SwiftUI gives the window of a `Settings` scene.
+    private static let settingsWindowID = "com_apple_SwiftUI_Settings_window"
+
     /// SwiftUI names each window after its scene, sometimes with a suffix.
     private static func window(_ id: String) -> NSWindow? {
         NSApp.windows.first { $0.isVisible && $0.canBecomeMain && ($0.identifier?.rawValue.hasPrefix(id) ?? false) }
+    }
+
+    /// The question about moving to Applications, run the way it is at launch and dismissed once photographed.
+    /// While it is up only the run loop's own timers fire, so the picture is taken from one, not from a task.
+    /// The system draws an alert across two windows, so the picture is of that part of the screen: the alert
+    /// and the main window behind it.
+    private static func captureQuestion(to file: URL) {
+        let question = MoveToApplications.question()
+        let path = file.path
+        let timer = Timer(timeInterval: 0.9, repeats: false) { _ in
+            MainActor.assumeIsolated {
+                let frame = question.window.frame.insetBy(dx: -70, dy: -50)
+                // screencapture measures from the top of the main display; AppKit measures from the bottom.
+                let top = (NSScreen.screens.first?.frame.height ?? 0) - frame.maxY
+                let region = [frame.minX, top, frame.width, frame.height].map { String(Int($0)) }.joined(separator: ",")
+                _ = try? Shell.run("/usr/sbin/screencapture", ["-x", "-R", region, path])
+                NSApp.abortModal()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        question.runModal()
     }
 
     private static func capture(_ id: String, to file: URL, sheet: Bool = false) async {
@@ -57,8 +96,12 @@ enum Snapshotter {
             FileHandle.standardError.write(Data("no window \(id): \(NSApp.windows.map { $0.identifier?.rawValue ?? "?" })\n".utf8))
             return
         }
-        // The system's own window capture, so glass, materials and the toolbar come out as they look on screen.
-        // A sheet is part of its parent window's picture.
+        await screenshot(window, to: file)
+    }
+
+    /// The system's own window capture, so glass, materials and the toolbar come out as they look on screen.
+    /// A sheet is part of its parent window's picture.
+    private static func screenshot(_ window: NSWindow, to file: URL) async {
         let number = String(window.windowNumber)
         let path = file.path
         _ = await Task.detached {

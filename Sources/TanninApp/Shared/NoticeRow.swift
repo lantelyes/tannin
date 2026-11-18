@@ -14,7 +14,10 @@ struct NoticeRow<Actions: View>: View {
             Text(text)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
-            actions
+            // The text is laid out first and takes all the width it is offered, so the buttons have to
+            // insist on their own size or they are squeezed to slivers.
+            HStack(spacing: 8) { actions }
+                .fixedSize()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)

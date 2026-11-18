@@ -67,7 +67,10 @@ struct SidebarView: View {
         }
         // A bar, not a plain inset: the system fades the list out underneath it.
         .safeAreaBar(edge: .bottom, spacing: 0) {
-            SidebarStatus()
+            VStack(spacing: 0) {
+                UpdateSidebarRow()
+                SidebarStatus()
+            }
         }
     }
 
