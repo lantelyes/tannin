@@ -19,6 +19,17 @@ final class AppModel {
     private(set) var layerUsage: [String: LayerUsage] = [:]
     /// The Wine engine's size on disk, worked out once.
     private(set) var engineSize: Int64?
+    /// The Wine engines Tannin knows, installed or not.
+    private(set) var engines: [EngineRow] = []
+    /// The engine that is downloading or paused, if any.
+    private(set) var engineProgress: EngineProgress?
+    /// Which Wine engine each installed game uses.
+    private(set) var gameEngines: [String: GameEngine] = [:]
+    /// The copy of each game's Windows environment, where one has been made.
+    private(set) var environmentCopies: [String: EnvironmentCopy.Info] = [:]
+    /// Games moved to another Wine version since the app opened, for the notice on their page.
+    private(set) var recentlyMoved: Set<String> = []
+    private var engineSizes: [String: Int64] = [:]
     /// A plain description of the action in progress, or nil.
     private(set) var activity: String?
     private(set) var errorMessage: String?
@@ -48,7 +59,15 @@ final class AppModel {
         }
     }
 
-    var isBusy: Bool { activity != nil || (setupProgress != nil && setupProgress?.isPaused == false) }
+    var isBusy: Bool {
+        activity != nil || (setupProgress != nil && setupProgress?.isPaused == false)
+            || (engineProgress != nil && engineProgress?.isPaused == false)
+    }
+
+    /// The engine a game runs on, for writing its launch options.
+    func engine(for appID: String) -> EngineSpec { gameEngines[appID]?.runsOn ?? .newest }
+    /// True once a second engine is installed, which is when a game can be given a Wine version of its own.
+    var hasSeveralEngines: Bool { engines.count(where: \.isInstalled) > 1 }
     var problem: SteamPlayProblem? { status.flatMap(SteamPlayProblem.init) }
 
     func canPlay(_ game: LibraryGame) -> Bool {
@@ -63,6 +82,7 @@ final class AppModel {
         let known = libraryFingerprint
         let installed = library.installed
         let needsEngineSize = engineSize == nil
+        let knownSizes = engineSizes
         let snapshot = await Task.detached {
             let reader = LibraryReader(paths: paths)
             let fingerprint = reader.fingerprint()
@@ -71,10 +91,35 @@ final class AppModel {
             for game in library?.installed ?? installed {
                 usage[game.appID] = LayerUsage.lastRun(appID: game.appID, is32Bit: game.is32Bit, paths: paths)
             }
+            // Wine engines, and which game uses which.
+            let games = (library?.installed ?? installed).map(\.appID)
+            let store = EngineStore(paths: paths)
+            let fallback = store.defaultEngine()
+            let pins = SteamConfig(paths: paths).compatTools().compactMapValues(EngineSpec.named(tool:))
+            var gameEngines: [String: GameEngine] = [:]
+            var copies: [String: EnvironmentCopy.Info] = [:]
+            if let fallback {
+                for appID in games {
+                    let pin = pins[appID]
+                    gameEngines[appID] = GameEngine(pin: pin, runsOn: pin.flatMap { store.isInstalled($0) ? $0 : nil } ?? fallback)
+                    copies[appID] = EnvironmentCopy(paths: paths).info(appID: appID)
+                }
+            }
+            var sizes = knownSizes
+            let rows = EngineSpec.all.map { spec in
+                let isInstalled = store.isInstalled(spec)
+                if isInstalled, sizes[spec.id] == nil { sizes[spec.id] = store.sizeOnDisk(spec) }
+                return EngineRow(spec: spec, isInstalled: isInstalled, isDefault: spec == fallback,
+                                 games: games.filter { gameEngines[$0]?.runsOn == spec }, size: isInstalled ? sizes[spec.id] : nil)
+            }
             return (
                 status: StatusReader(paths: paths).read(),
                 fingerprint: fingerprint,
                 library: library,
+                engines: rows,
+                engineSizes: sizes,
+                gameEngines: gameEngines,
+                copies: copies,
                 logLines: LogReader(paths: paths).recentLines(),
                 setup: Setup(paths: paths).states(),
                 upkeep: Upkeep(paths: paths).plan(),
@@ -95,6 +140,10 @@ final class AppModel {
         if upkeep != snapshot.upkeep { upkeep = snapshot.upkeep }
         if layerUsage != snapshot.usage { layerUsage = snapshot.usage }
         if let size = snapshot.engineSize { engineSize = size }
+        if engines != snapshot.engines { engines = snapshot.engines }
+        engineSizes = snapshot.engineSizes
+        if gameEngines != snapshot.gameEngines { gameEngines = snapshot.gameEngines }
+        if environmentCopies != snapshot.copies { environmentCopies = snapshot.copies }
         reconcileSelection()
     }
 
@@ -126,6 +175,11 @@ final class AppModel {
         upkeepProgress = fixture.upkeepProgress
         layerUsage = fixture.layerUsage
         engineSize = 1_300_000_000
+        engines = fixture.engines
+        engineProgress = fixture.engineProgress
+        gameEngines = fixture.gameEngines
+        environmentCopies = fixture.environmentCopies
+        recentlyMoved = fixture.recentlyMoved
     }
 
     /// Goes back to what is really on this Mac.
@@ -137,6 +191,8 @@ final class AppModel {
         selection = nil
         upkeepProgress = nil
         engineSize = nil
+        engineProgress = nil
+        recentlyMoved = []
         await refresh()
     }
 
@@ -193,7 +249,8 @@ final class AppModel {
             let wasRunning = SteamInstall(paths: paths).isRunning()
             if wasRunning { try SteamAddon(paths: paths).stopSteam() }
             let config = SteamConfig(paths: paths)
-            let options = settings.launchOptions(merging: config.launchOptions(appID: appID) ?? "")
+            let engine = EngineStore(paths: paths).engine(for: appID) ?? .newest
+            let options = settings.launchOptions(merging: config.launchOptions(appID: appID) ?? "", engine: engine)
             try config.setLaunchOptions(appID: appID, options)
             if wasRunning { try? SteamLauncher(paths: paths).openSteam() }
         }
@@ -237,6 +294,89 @@ final class AppModel {
 
     /// True while there is something for the Engine page's "After the Update" rows to show.
     var hasUpkeepToShow: Bool { !upkeep.isEmpty || upkeepProgress != nil }
+
+    // MARK: Wine engines
+
+    /// Does something that rewrites Steam's settings: Steam is quit first if it is open, and reopened afterwards.
+    private func withSteamClosed(_ label: String, _ work: @escaping @Sendable () throws -> Void) async {
+        let paths = paths
+        await perform(label) {
+            let wasRunning = SteamInstall(paths: paths).isRunning()
+            if wasRunning { try SteamAddon(paths: paths).stopSteam() }
+            defer { if wasRunning { try? SteamLauncher(paths: paths).openSteam() } }
+            try work()
+        }
+    }
+
+    /// Downloads and installs another Wine engine beside the present one. Can be paused and resumed.
+    func installEngine(_ spec: EngineSpec) async {
+        guard !isBusy else { return }
+        let cancellation = Cancellation()
+        self.cancellation = cancellation
+        engineProgress = EngineProgress(spec: spec)
+        let paths = paths
+        let context = WorkContext(quiet: true, progress: { [weak self] progress in
+            Task { @MainActor in
+                guard self?.engineProgress?.spec == spec, self?.engineProgress?.isPaused == false else { return }
+                self?.engineProgress?.download = progress
+            }
+        }, cancellation: cancellation)
+        do {
+            try await Task.detached { try EngineStore(paths: paths).install(spec, context) }.value
+            engineProgress = nil
+        } catch is Cancelled {
+            engineProgress?.isPaused = true
+        } catch {
+            engineProgress = nil
+            fail(error)
+        }
+        self.cancellation = nil
+        await refresh()
+    }
+
+    /// Makes an engine the default. Games that follow the default move with it, each with a copy kept first.
+    func makeDefaultEngine(_ spec: EngineSpec) async {
+        let paths = paths
+        let games = library.installed.map(\.appID)
+        let moving = Set(games.filter { gameEngines[$0]?.pin == nil })
+        await withSteamClosed("Making \(spec.title) the default") {
+            try GameMove(paths: paths).makeDefault(spec, games: games)
+        }
+        if engines.first(where: { $0.spec == spec })?.isDefault == true { recentlyMoved.formUnion(moving) }
+    }
+
+    /// Moves an engine to the Trash. Games pinned to it go back to the default first.
+    func removeEngine(_ spec: EngineSpec) async {
+        let paths = paths
+        if engines.first(where: { $0.spec == spec })?.games.isEmpty == false {
+            await withSteamClosed("Removing \(spec.title)") { try GameMove(paths: paths).remove(spec) }
+        } else {
+            await perform("Removing \(spec.title)") { try GameMove(paths: paths).remove(spec) }
+        }
+    }
+
+    /// Pins a game to a Wine version, or with nil lets it follow the default again.
+    func moveGame(_ appID: String, to spec: EngineSpec?) async {
+        let paths = paths
+        let before = gameEngines[appID]
+        await withSteamClosed("Moving the game to \(spec?.title ?? "the default Wine version")") {
+            try GameMove(paths: paths).move(appID: appID, to: spec)
+        }
+        if gameEngines[appID]?.runsOn != before?.runsOn { recentlyMoved.insert(appID) }
+    }
+
+    /// Puts back the copy of a game's Windows environment made before it last moved.
+    func restoreGame(_ appID: String) async {
+        let paths = paths
+        await withSteamClosed("Putting the Windows environment back") {
+            try GameMove(paths: paths).restore(appID: appID)
+        }
+        recentlyMoved.remove(appID)
+    }
+
+    func showEngineInFinder(_ spec: EngineSpec) {
+        NSWorkspace.shared.activateFileViewerSelecting([Engine(paths: paths, spec: spec).root])
+    }
 
     // MARK: Asking Steam
 

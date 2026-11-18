@@ -21,6 +21,12 @@ public struct EnvironmentCopy: Sendable {
         /// The Wine version the game was on when the copy was made, and the one it was moving to.
         public var fromWine: String
         public var toWine: String
+
+        public init(made: Date, fromWine: String, toWine: String) {
+            self.made = made
+            self.fromWine = fromWine
+            self.toWine = toWine
+        }
     }
 
     public let paths: Paths
@@ -120,6 +126,34 @@ public struct GameMove: Sendable {
         let existing = config.launchOptions(appID: appID) ?? ""
         let rewritten = GameSettings(parsing: existing).launchOptions(merging: existing, engine: destination)
         if rewritten != existing { try config.setLaunchOptions(appID: appID, rewritten) }
+    }
+
+    /// Makes another engine the default. Every game that follows the default moves with it, so each of `games`
+    /// that is not pinned gets its copy first and has its launch options rewritten for the new engine.
+    public func makeDefault(_ target: EngineSpec, games: [String], now: Date = Date()) throws {
+        let store = EngineStore(paths: paths)
+        guard !steamIsRunning() else { throw SteamConfigError.steamRunning }
+        guard store.isInstalled(target) else { throw EngineStoreError.notInstalled(target.title) }
+        guard let from = store.defaultEngine(), from != target else { return }
+        for appID in games where store.pin(appID: appID) == nil {
+            try EnvironmentCopy(paths: paths).make(appID: appID, from: from, to: target, now: now)
+            let existing = config.launchOptions(appID: appID) ?? ""
+            let rewritten = GameSettings(parsing: existing).launchOptions(merging: existing, engine: target)
+            if rewritten != existing { try config.setLaunchOptions(appID: appID, rewritten) }
+        }
+        try store.makeDefault(target)
+    }
+
+    /// Removes an engine. Games pinned to it go back to the default first, each with its copy.
+    public func remove(_ spec: EngineSpec, now: Date = Date()) throws {
+        let store = EngineStore(paths: paths)
+        let pinned = store.pinnedGames(spec)
+        if !pinned.isEmpty {
+            guard !steamIsRunning() else { throw SteamConfigError.steamRunning }
+            guard store.defaultEngine() != spec else { throw EngineStoreError.isTheDefault(spec.title) }
+            for appID in pinned { try move(appID: appID, to: nil, now: now) }
+        }
+        try store.remove(spec)
     }
 
     /// Puts back the copy made before the game last moved, and the Wine version it was on then.

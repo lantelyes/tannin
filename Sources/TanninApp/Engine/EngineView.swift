@@ -31,7 +31,7 @@ struct EngineView: View {
                         UpkeepSection()
                     }
                     steamPlay(status)
-                    wine(status)
+                    WineEnginesSection()
                     graphics(status)
                     bridge(status)
                 }
@@ -127,29 +127,6 @@ struct EngineView: View {
             case nil: return "Not loaded yet. It loads the next time Steam starts." + build
             }
         }
-    }
-
-    private func wine(_ status: TanninStatus) -> some View {
-        Section("Wine Engine") {
-            LabeledContent {
-                state(status.engineInstalled ? "Installed" : "Not installed", status.engineInstalled ? .ok : .pending)
-            } label: {
-                Text("Wine \(status.engineWine)")
-                Text(wineCaption(status))
-            }
-        }
-    }
-
-    /// "2 games · 1.3 GB. Built from CodeWeavers' published source."
-    private func wineCaption(_ status: TanninStatus) -> String {
-        let source = "Built from CodeWeavers' published source."
-        guard status.engineInstalled else { return source }
-        let count = model.library.installed.count
-        var facts = [count == 1 ? "1 game" : "\(count) games"]
-        if let size = model.engineSize {
-            facts.append(size.formatted(.byteCount(style: .file)))
-        }
-        return facts.joined(separator: " · ") + ". " + source
     }
 
     private func graphics(_ status: TanninStatus) -> some View {
