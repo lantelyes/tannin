@@ -1,8 +1,8 @@
 import SwiftUI
 import TanninCore
 
-/// The first-run window: one screen that changes as setup goes. The person's own covers run across the top and
-/// come into colour with the downloads; the middle holds the one thing to do, or what is happening.
+/// The first-run window: one screen that changes as setup goes. Seven covers run across the top, the same for
+/// everyone; the middle holds the one thing to do, or what is happening.
 /// Everything shown is worked out from what is on disk, so the window can be closed and reopened at any point.
 struct SetupView: View {
     @Environment(AppModel.self) private var model
@@ -15,19 +15,16 @@ struct SetupView: View {
     var body: some View {
         @Bindable var model = model
         let phase = model.setupPhase
-        let covers = model.setupCovers
 
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                if !covers.isEmpty {
-                    SetupCoverBand(games: covers, lit: phase.lit(of: covers.count))
-                }
-                header(phase, hasCovers: !covers.isEmpty)
+                SetupCoverBand(pictures: model.setupArt)
+                header(phase)
                 SetupAction(phase: phase, isAddingSteamPlay: $isAddingSteamPlay, finish: showMyGames)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.horizontal, 30)
             }
-            .frame(height: covers.isEmpty ? Self.plainHeight : Self.bandHeight)
+            .frame(height: Self.bandHeight)
 
             if isShowingDetails {
                 SetupDetails(phase: phase)
@@ -37,6 +34,8 @@ struct SetupView: View {
             footer(phase)
         }
         .frame(width: 720)
+        // The pictures this Mac does not have yet are fetched for the window, not before anyone has opened it.
+        .task { await model.loadSetupArt() }
         .sheet(isPresented: $isAddingSteamPlay) {
             SteamPlaySheet(isForSetup: true)
         }
@@ -47,13 +46,13 @@ struct SetupView: View {
         }
     }
 
-    /// The height of everything between the title bar and the footer, with covers and without.
+    /// The height of everything between the title bar and the footer. It is the same in every state, so the
+    /// window never changes size except for Details.
     private static let bandHeight: CGFloat = 504
-    private static let plainHeight: CGFloat = 324
 
     // MARK: Words
 
-    private func header(_ phase: SetupPhase, hasCovers: Bool) -> some View {
+    private func header(_ phase: SetupPhase) -> some View {
         VStack(spacing: 0) {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
@@ -72,8 +71,8 @@ struct SetupView: View {
                 .padding(.top, 8)
         }
         .padding(.horizontal, 30)
-        // The icon sits half over the covers; without them it starts a little below the title bar.
-        .padding(.top, hasCovers ? -40 : 12)
+        // The icon sits half over the covers.
+        .padding(.top, -40)
     }
 
     private var gameCount: Int { model.library.all.count }

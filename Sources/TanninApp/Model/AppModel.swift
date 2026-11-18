@@ -16,8 +16,11 @@ final class AppModel {
     private(set) var setupFailure: SetupFailure?
     /// How adding Steam Play from the setup window is going.
     private(set) var steamPlayAdd = SteamPlayAdd.idle
-    /// The covers across the top of the setup window: the most played Windows games, the first in the middle.
-    private(set) var setupCovers: [LibraryGame] = []
+    /// The seven pictures across the top of the setup window, in order, once every one of them is on this Mac.
+    /// Nil until then, so they arrive together or not at all.
+    private(set) var setupArt: [CGImage]?
+    /// The one read of those pictures that is under way, if any.
+    private var setupArtLoad: Task<Void, Never>?
     /// What an earlier Tannin installed that this one would bring up to date.
     private(set) var upkeep: [Upkeep.Item] = []
     private(set) var upkeepProgress: UpkeepProgress?
@@ -79,10 +82,18 @@ final class AppModel {
         let isTakingScreenshots = Snapshotter.outputFolder != nil
         needsSetupAtLaunch = !isTakingScreenshots && !Setup(paths: paths).isReadyForSteamPlay
         setupIsFirstRun = needsSetupAtLaunch
+        if needsSetupAtLaunch {
+            // The setup window is the first thing drawn. Pictures this Mac already has are read before that, so
+            // they are there on its first frame: seven small files, a few hundredths of a second.
+            setupArt = Self.setupArtOnThisMac(paths)
+        }
         // The model lives as long as the app, and every window and the menu bar read from it,
         // so it keeps itself up to date rather than relying on one window being open.
         if !isTakingScreenshots {
             Task { await keepRefreshing() }
+            // Read early, so the setup window has its pictures whenever it is opened from the menu. Nothing is
+            // fetched for a window nobody has asked for.
+            if !needsSetupAtLaunch { Task { await loadSetupArt(fetching: false) } }
         }
     }
 
@@ -102,14 +113,38 @@ final class AppModel {
         SetupPhase(states: setup, progress: setupProgress, failure: setupFailure, steamPlay: steamPlayAdd)
     }
 
-    /// How many covers the setup window shows, and the fewest it shows at all.
-    static let setupCoverCount = 7
-    static let fewestSetupCovers = 5
+    /// The longest side of a setup cover as it is kept in memory: three times its height on screen.
+    private nonisolated static let setupArtPixels = 480
 
-    private func chooseSetupCovers() {
-        let ranked = library.showcase(count: Self.setupCoverCount)
-        let row = ranked.count >= Self.fewestSetupCovers ? Library.centred(ranked) : []
-        if setupCovers != row { setupCovers = row }
+    /// The seven pictures when all of them are on this Mac already, read on the calling thread.
+    private nonisolated static func setupArtOnThisMac(_ paths: Paths) -> [CGImage]? {
+        guard let files = SetupArt(paths: paths).localFiles() else { return nil }
+        let images = files.compactMap { ArtworkCache.imageNow(at: $0, pixels: setupArtPixels) }
+        return images.count == files.count ? images : nil
+    }
+
+    /// Reads the setup window's pictures, fetching from Steam's servers those this Mac does not have. Called when
+    /// the window appears and when Set Up is pressed; does nothing once they are in, or while a try is running.
+    func loadSetupArt(fetching: Bool = true) async {
+        // One read at a time. A caller that arrives during another's read waits for it, then looks again: the
+        // earlier one may have been told not to fetch.
+        while let running = setupArtLoad { await running.value }
+        guard setupArt == nil, !isShowingFixture else { return }
+        let paths = paths
+        let pixels = Self.setupArtPixels
+        let load = Task {
+            let images = await Task.detached(priority: .userInitiated) { () -> [CGImage]? in
+                let art = SetupArt(paths: paths)
+                guard let files = fetching ? art.files() : art.localFiles() else { return nil }
+                let images = files.compactMap { ArtworkCache.imageNow(at: $0, pixels: pixels) }
+                return images.count == files.count ? images : nil
+            }.value
+            // Cleared here, before anyone waiting is let through.
+            setupArtLoad = nil
+            if let images, setupArt == nil, !isShowingFixture { setupArt = images }
+        }
+        setupArtLoad = load
+        await load.value
     }
 
     func canPlay(_ game: LibraryGame) -> Bool {
@@ -194,10 +229,7 @@ final class AppModel {
         if status != snapshot.status { status = snapshot.status }
         if let fresh = snapshot.library {
             libraryFingerprint = snapshot.fingerprint
-            if library != fresh {
-                library = fresh
-                chooseSetupCovers()
-            }
+            if library != fresh { library = fresh }
         }
         if logLines != snapshot.logLines { logLines = snapshot.logLines }
         let states = Dictionary(uniqueKeysWithValues: snapshot.setup.map { ($0.step, $0.state) })
@@ -236,7 +268,7 @@ final class AppModel {
         isShowingFixture = true
         status = fixture.status
         library = fixture.library
-        chooseSetupCovers()
+        setupArt = fixture.isWaitingForSetupArt ? nil : Self.setupArtOnThisMac(.live)
         logLines = fixture.logLines
         setup = fixture.setup
         setupProgress = fixture.setupProgress
@@ -267,6 +299,7 @@ final class AppModel {
     /// Goes back to what is really on this Mac.
     func showLiveData() async {
         isShowingFixture = false
+        setupArt = Self.setupArtOnThisMac(paths)
         libraryFingerprint = nil
         setupProgress = nil
         setupFailure = nil
@@ -596,19 +629,24 @@ final class AppModel {
     /// Set Up, Resume and Try Again all do.
     func runSetup() async {
         guard !isBusy else { return }
+        // Where a paused or stopped run had got to: the bar stays there, and does not start again from nothing,
+        // until the first report of the new run arrives.
+        let earlier = setupProgress ?? setupFailure?.progress
         setupFailure = nil
+        // The pictures may have been out of reach when the window opened; setup needs the network anyway.
+        if setupArt == nil { Task { await loadSetupArt() } }
         for step in [Setup.Step.rosetta, .engine, .bridge] {
             if setup[step]?.isDone == true { continue }
-            guard await run(step) else { return }
+            guard await run(step, after: earlier) else { return }
         }
     }
 
     /// Returns whether the step finished.
-    private func run(_ step: Setup.Step) async -> Bool {
+    private func run(_ step: Setup.Step, after earlier: SetupProgress?) async -> Bool {
         guard !isBusy else { return false }
         let cancellation = Cancellation()
         self.cancellation = cancellation
-        setupProgress = SetupProgress(step: step)
+        setupProgress = SetupProgress(step: step, download: earlier?.step == step ? earlier?.download : nil)
         let paths = paths
         let context = WorkContext(quiet: true, progress: { [weak self] progress in
             Task { @MainActor in self?.report(progress, for: step) }
@@ -626,7 +664,6 @@ final class AppModel {
                 }
             }.value
             finished = true
-            setupProgress = nil
         } catch is Cancelled {
             setupProgress?.isPaused = true
         } catch {
@@ -635,6 +672,9 @@ final class AppModel {
         }
         self.cancellation = nil
         await refresh()
+        // A finished step keeps saying where it got to until the disk has been read again. Clearing it first
+        // would show the window what was on disk before the step: no progress, and the Set Up button again.
+        if finished { setupProgress = nil }
         return finished
     }
 

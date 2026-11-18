@@ -32,6 +32,10 @@ public struct Paths: Sendable {
     /// What Tannin has installed, and from which versions.
     public var installRecord: URL { tannin.appending(path: "installed.json") }
 
+    /// The setup window's seven covers, once fetched. Among the caches and not in Tannin's own folder, so that
+    /// nothing of Tannin's appears in Application Support before setup has run, and macOS may clear it.
+    public var setupArt: URL { home.appending(path: "Library/Caches/io.github.lantelyes.Tannin/SetupArt") }
+
     /// The folder the Steam add-on reads. The name is fixed by the add-on.
     public var notproton: URL { appSupport.appending(path: "notproton") }
 

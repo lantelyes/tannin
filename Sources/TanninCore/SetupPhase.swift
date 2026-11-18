@@ -148,19 +148,6 @@ public enum SetupPhase: Sendable, Equatable {
         if case .paused = self { return true }
         return false
     }
-
-    /// How many of `count` covers are in colour, as a number that moves smoothly: 2.5 is two covers and half of
-    /// the third. The downloads bring in all but the last; Steam Play brings in the last.
-    public func lit(of count: Int) -> Double {
-        let most = Double(max(0, count - 1))
-        switch self {
-        case .checking, .steamMissing: return 0
-        case let .before(_, _, fraction): return fraction * most
-        case let .working(work), let .paused(work), let .failed(_, work): return (work.fraction ?? 0) * most
-        case .readyForSteamPlay, .foreignTool, .addingSteamPlay, .steamPlayRefused, .steamPlayFailed: return most
-        case .done: return Double(count)
-        }
-    }
 }
 
 extension Setup {

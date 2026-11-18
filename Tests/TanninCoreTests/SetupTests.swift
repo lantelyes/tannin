@@ -308,20 +308,4 @@ final class ProgressLog: @unchecked Sendable {
         emptied[.steamPlay] = .done("On")
         #expect(phase(emptied) == .before(needsRosetta: false, bytesLeft: Setup.downloadBytes, fraction: 0))
     }
-
-    @Test func coversComeIntoColourWithTheDownloadsAndTheLastWithSteamPlay() {
-        #expect(phase(usual).lit(of: 7) == 0)
-        let half = SetupProgress(step: .engine, download: download(Pins.engine, engine / 2))
-        let lit = phase(usual, half).lit(of: 7)
-        #expect(abs(lit - 6 * Setup.downloadShare * Double(engine / 2) / Double(Setup.downloadBytes)) < 1e-9)
-        #expect(phase(usual, SetupProgress(step: .rosetta)).lit(of: 7) == 0)
-        #expect(phase(ready).lit(of: 7) == 6)
-        #expect(phase(ready, steamPlay: .adding).lit(of: 7) == 6)
-        #expect(phase(ready, steamPlay: .refused).lit(of: 7) == 6)
-        var done = ready
-        done[.steamPlay] = .done("On")
-        #expect(phase(done).lit(of: 7) == 7)
-        #expect(phase(done).lit(of: 5) == 5)
-        #expect(phase(ready).lit(of: 0) == 0)
-    }
 }

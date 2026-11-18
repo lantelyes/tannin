@@ -9,5 +9,6 @@ out="${1:?usage: snapshots.sh <output folder>}"
 ./scripts/bundle.sh
 rm -rf "$out"
 mkdir -p "$out"
-TANNIN_SNAPSHOT_DIR="$out" build/Tannin.app/Contents/MacOS/Tannin
+# Windows left open by an earlier run are not put back: the pictures start from the main window.
+TANNIN_SNAPSHOT_DIR="$out" build/Tannin.app/Contents/MacOS/Tannin -ApplePersistenceIgnoreState YES
 ls "$out"

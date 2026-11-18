@@ -65,16 +65,6 @@ public struct Library: Sendable, Equatable {
         return Array(ranked.prefix(max(0, count)))
     }
 
-    /// Lays ranked items out in a row with the first in the middle and the rest alternating outwards,
-    /// so the last ones end up at the edges.
-    public static func centred<Item>(_ ranked: [Item]) -> [Item] {
-        var row: [Item] = []
-        for (index, item) in ranked.enumerated() {
-            if index.isMultiple(of: 2) { row.append(item) } else { row.insert(item, at: 0) }
-        }
-        return row
-    }
-
     /// A fixed scramble of an app ID (FNV-1a). Swift's own hashing changes from one launch to the next.
     static func mixKey(_ appID: String) -> UInt64 {
         appID.utf8.reduce(14_695_981_039_346_656_037) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }

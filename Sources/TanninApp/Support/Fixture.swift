@@ -15,6 +15,8 @@ struct Fixture {
     var isFirstRun = true
     /// Whether the setup window's Details are open.
     var showsSetupDetails = false
+    /// True to show the setup window as it is before its seven pictures have arrived.
+    var isWaitingForSetupArt = false
     var selection: SidebarSelection?
     var isShowingSteamPlaySheet = false
     /// What Tannin knows about its own updates; nil is a copy that cannot update itself.
@@ -117,9 +119,9 @@ struct Fixture {
     static var setupScenarios: [(name: String, fixture: Fixture)] {
         func window(_ states: [Setup.Step: Setup.State], status: TanninStatus = steamPlayOff, library: Library = setupLibrary,
                     progress: SetupProgress? = nil, failure: SetupFailure? = nil, steamPlay: SteamPlayAdd = .idle,
-                    isFirstRun: Bool = true, details: Bool = false) -> Fixture {
+                    isFirstRun: Bool = true, details: Bool = false, artWaiting: Bool = false) -> Fixture {
             Fixture(status: status, library: library, setup: states, setupProgress: progress, setupFailure: failure,
-                    steamPlayAdd: steamPlay, isFirstRun: isFirstRun, showsSetupDetails: details)
+                    steamPlayAdd: steamPlay, isFirstRun: isFirstRun, showsSetupDetails: details, isWaitingForSetupArt: artWaiting)
         }
         func engine(_ received: Int64, verifying: Bool = false, paused: Bool = false) -> SetupProgress {
             SetupProgress(step: .engine, download: DownloadProgress(name: Pins.engine.name, received: received, total: Pins.engine.size, isVerifying: verifying),
@@ -160,7 +162,10 @@ struct Fixture {
             ("setup-details", window(setupStates(), progress: engine(312_000_000), details: true)),
             ("setup-details-last-step", window(lastStep, details: true)),
             ("setup-details-before", window(noRosetta, details: true)),
-            // Without covers, and opened again later.
+            // Before the seven pictures have arrived: each place holds its cover's colours.
+            ("setup-art-waiting", window(setupStates(), artWaiting: true)),
+            ("setup-art-waiting-working", window(setupStates(), progress: engine(312_000_000), artWaiting: true)),
+            // Without Steam or without games, and opened again later.
             ("setup-no-steam", window(setupStates(steam: .ready), library: .empty)),
             ("setup-no-library", window(setupStates(), library: .empty)),
             ("setup-one-game", window(setupStates(), library: oneGame)),
@@ -179,20 +184,11 @@ struct Fixture {
         [.rosetta: rosetta, .steam: steam, .engine: engine, .bridge: bridge, .steamPlay: steamPlay]
     }
 
-    /// A library of 103 Windows games, none installed. Seven have covers and play time; the pictures made from
-    /// this are public, so the covers are a fixed set and not whatever this Mac's own most played games are.
-    private static let setupLibrary: Library = {
-        let played = [
-            ("1151640", "Horizon Zero Dawn™ Complete Edition"), ("1174180", "Red Dead Redemption 2"), ("1190460", "DEATH STRANDING"),
-            ("377160", "Fallout 4"), ("782330", "DOOM Eternal"), ("1449560", "Metro Exodus Enhanced Edition"),
-            ("1895880", "Ratchet & Clank: Rift Apart"),
-        ].enumerated().map { index, entry in
-            LibraryGame(appID: entry.0, name: entry.1, install: .notInstalled, art: GameArt(appID: entry.0, paths: .live),
-                        minutesPlayed: 4200 - index * 600)
-        }
-        let rest = (1...96).map { LibraryGame(appID: "9\(100_000 + $0)", name: "Game \($0)", install: .notInstalled) }
-        return Library(installed: [], notInstalled: played + rest)
-    }()
+    /// A library of 103 Windows games, none installed. The covers across the setup window are not taken from it:
+    /// they are the same seven for everyone, read here from Steam's own copies on this Mac.
+    private static let setupLibrary = Library(
+        installed: [],
+        notInstalled: (1...103).map { LibraryGame(appID: "9\(100_000 + $0)", name: "Game \($0)", install: .notInstalled) })
 
     /// Every drawn state of the Updates group in Settings.
     static var settingsScenarios: [(name: String, updates: UpdateStatus?)] {

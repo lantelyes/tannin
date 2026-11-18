@@ -310,11 +310,4 @@ struct AppInfoFile {
         #expect(Library.mixKey("") == 14_695_981_039_346_656_037)
         #expect(Library.mixKey("a") == 0xAF63_DC4C_8601_EC8C)
     }
-
-    @Test func theRowPutsTheFirstInTheMiddleAndTheLastAtTheEdges() {
-        #expect(Library.centred([0, 1, 2, 3, 4, 5, 6]) == [5, 3, 1, 0, 2, 4, 6])
-        #expect(Library.centred([0, 1, 2, 3, 4]) == [3, 1, 0, 2, 4])
-        #expect(Library.centred([0, 1]) == [1, 0])
-        #expect(Library.centred([Int]()).isEmpty)
-    }
 }
