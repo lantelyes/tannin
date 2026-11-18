@@ -59,17 +59,20 @@ public enum Pins {
         "https://steamcdn-a.akamaihd.net/client",
         "https://media.steampowered.com/client",
     ]
-    private static func valve(_ file: String, _ sha256: String) -> Pin {
-        Pin(name: file, urls: valveBases.map { "\($0)/\(file)" }, sha256: sha256)
+    private static func valve(_ file: String, _ sha256: String, size: Int64? = nil) -> Pin {
+        Pin(name: file, urls: valveBases.map { "\($0)/\(file)" }, sha256: sha256, size: size)
     }
 
+    // The sizes are those of the files these hashes belong to, so setup can say how much is left to download.
     public static let valveLinux = valve(
         "bins_misc_ubuntu12.zip.3f92810725ee673827371a0470cd4f8c7ea8cfae",
-        "026b984726c728bbf81ae3ba16623bcd96e2bf837a859c235acf0ee279d940fd"
+        "026b984726c728bbf81ae3ba16623bcd96e2bf837a859c235acf0ee279d940fd",
+        size: 37_703_386
     )
     public static let valveWin64 = valve(
         "bins_win64.zip.36f5d9202e79ab2aa3e3c5902e84bbd799d31fc0",
-        "93f5b6bea0267fd85dc8cc823fdab5c5fb55d7f3a1deab0598acefef0e133bce"
+        "93f5b6bea0267fd85dc8cc823fdab5c5fb55d7f3a1deab0598acefef0e133bce",
+        size: 63_700_191
     )
     /// A pristine, Valve-signed Steam.app, used to undo the add-on.
     public static let steamBundle = valve(

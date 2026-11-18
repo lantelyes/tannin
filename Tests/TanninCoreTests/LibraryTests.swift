@@ -196,11 +196,18 @@ struct AppInfoFile {
         \t\t\t\t{
         \t\t\t\t\t"100"
         \t\t\t\t\t{
+        \t\t\t\t\t\t"LastPlayed"\t\t"1795007059"
+        \t\t\t\t\t\t"Playtime"\t\t"53"
         \t\t\t\t\t\t"LaunchOptions"\t\t"D3DM_MAX_FPS=30 %command%"
         \t\t\t\t\t}
         \t\t\t\t\t"400"
         \t\t\t\t\t{
+        \t\t\t\t\t\t"Playtime"\t\t"1240"
         \t\t\t\t\t\t"LaunchOptions"\t\t"MTL_HUD_ENABLED=1 %command%"
+        \t\t\t\t\t}
+        \t\t\t\t\t"500"
+        \t\t\t\t\t{
+        \t\t\t\t\t\t"Playtime"\t\t"0"
         \t\t\t\t\t}
         \t\t\t\t}
         \t\t\t}
@@ -240,6 +247,18 @@ struct AppInfoFile {
         #expect(library.game("500")?.art == GameArt.none)
     }
 
+    @Test func playTimeComesFromSteamsOwnRecord() throws {
+        let paths = try makeHome()
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        #expect(SteamConfig(paths: paths).playtimes() == ["100": 53, "400": 1240])
+        let library = LibraryReader(paths: paths).read()
+        #expect(library.game("100")?.minutesPlayed == 53)
+        #expect(library.game("400")?.minutesPlayed == 1240)
+        #expect(library.game("500")?.minutesPlayed == 0)
+        // Reading play time leaves the launch options as they were read before.
+        #expect(SteamConfig(paths: paths).allLaunchOptions() == ["100": "D3DM_MAX_FPS=30 %command%", "400": "MTL_HUD_ENABLED=1 %command%"])
+    }
+
     @Test func withoutAppInfoOnlyGamesWithAWindowsEnvironmentAreListed() throws {
         let paths = try makeHome()
         defer { try? FileManager.default.removeItem(at: paths.home) }
@@ -259,5 +278,43 @@ struct AppInfoFile {
         #expect(throws: SteamLauncherError.self) { try SteamLauncher.address(for: .play("12/../x")) }
         #expect(throws: SteamLauncherError.self) { try SteamLauncher.address(for: .install("")) }
         #expect(throws: SteamLauncherError.self) { try SteamLauncher.address(for: .play("١٢٣")) }
+    }
+}
+
+@Suite struct ShowcaseTests {
+    private func game(_ appID: String, minutes: Int = 0, cover: Bool = true, installed: Bool = false) -> LibraryGame {
+        let art = cover ? GameArt(hero: nil, cover: URL(fileURLWithPath: "/covers/\(appID).jpg"), header: nil, logo: nil) : GameArt.none
+        return LibraryGame(appID: appID, name: "Game \(appID)", install: installed ? .installed : .notInstalled, art: art, minutesPlayed: minutes)
+    }
+
+    @Test func theMostPlayedComeFirstAndGamesWithoutACoverAreLeftOut() {
+        let library = Library(installed: [game("1", minutes: 40, installed: true)],
+                              notInstalled: [game("2", minutes: 900), game("3", minutes: 5000, cover: false), game("4", minutes: 120), game("5")])
+        #expect(library.showcase(count: 7).map(\.appID) == ["2", "4", "1", "5"])
+        #expect(library.showcase(count: 2).map(\.appID) == ["2", "4"])
+        #expect(library.showcase(count: 0).isEmpty)
+    }
+
+    @Test func gamesNeverPlayedComeInAMixedOrderThatIsTheSameEveryTime() {
+        let ids = (1...40).map { String($0 * 1010) }
+        let library = Library(installed: [], notInstalled: ids.map { game($0) })
+        let first = library.showcase(count: 7).map(\.appID)
+        #expect(first.count == 7)
+        // Not simply the order they were listed in, and not sorted by number either.
+        #expect(first != Array(ids.prefix(7)))
+        #expect(first != ids.sorted().prefix(7).map { $0 })
+        // The same from a library listed the other way round: the order depends on the games, not on the list.
+        #expect(Library(installed: [], notInstalled: ids.reversed().map { game($0) }).showcase(count: 7).map(\.appID) == first)
+        // Pinned to the published FNV-1a values, so a change to the scramble shows up here. Swift's own hashing
+        // would differ at each launch.
+        #expect(Library.mixKey("") == 14_695_981_039_346_656_037)
+        #expect(Library.mixKey("a") == 0xAF63_DC4C_8601_EC8C)
+    }
+
+    @Test func theRowPutsTheFirstInTheMiddleAndTheLastAtTheEdges() {
+        #expect(Library.centred([0, 1, 2, 3, 4, 5, 6]) == [5, 3, 1, 0, 2, 4, 6])
+        #expect(Library.centred([0, 1, 2, 3, 4]) == [3, 1, 0, 2, 4])
+        #expect(Library.centred([0, 1]) == [1, 0])
+        #expect(Library.centred([Int]()).isEmpty)
     }
 }
