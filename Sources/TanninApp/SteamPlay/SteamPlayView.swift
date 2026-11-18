@@ -1,14 +1,12 @@
 import SwiftUI
 import TanninCore
-import UniformTypeIdentifiers
 
-/// What Tannin has put on this Mac and into Steam, and the few things that can be changed about it.
-struct EngineView: View {
+/// Steam Play: whether it is in Steam, the freeze that keeps it working, and the Steam bridge it rests on.
+/// What is left of setup, and what follows a Tannin update, show here too.
+struct SteamPlayView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
     @State private var freeze = false
     @State private var isConfirmingRemoval = false
-    @State private var isChoosingToolkit = false
 
     static let removalMessage = "Steam quits and is put back exactly as Valve ships it. Your games, saves and Steam account are not touched. Windows games stop being playable until you add Steam Play again."
 
@@ -17,23 +15,12 @@ struct EngineView: View {
             if let status = model.status {
                 Form {
                     if model.problem == .setupIncomplete {
-                        Section {
-                            LabeledContent {
-                                Button("Continue Setup…") { openWindow(id: WindowID.setup) }
-                                    .buttonStyle(.borderedProminent)
-                            } label: {
-                                Text("Setup isn't finished")
-                                Text("Some of what Tannin needs is not on this Mac yet.")
-                            }
-                        }
+                        SetupNoticeSection()
                     }
                     if model.hasUpkeepToShow {
                         UpkeepSection()
                     }
                     steamPlay(status)
-                    WineEnginesSection()
-                    graphics(status)
-                    bridge(status)
                 }
                 .formStyle(.grouped)
             } else {
@@ -41,7 +28,7 @@ struct EngineView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("Engine")
+        .navigationTitle("Steam Play")
         .onChange(of: model.status?.updateFreeze, initial: true) { _, isOn in
             freeze = isOn ?? false
         }
@@ -56,11 +43,6 @@ struct EngineView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(Self.removalMessage)
-        }
-        .fileImporter(isPresented: $isChoosingToolkit, allowedContentTypes: [.diskImage, .folder]) { result in
-            if case let .success(url) = result {
-                Task { await model.importToolkit(from: url) }
-            }
         }
     }
 
@@ -91,8 +73,7 @@ struct EngineView: View {
                 Text("Keeps Steam on this build so Steam Play stays on.")
             }
             .disabled(model.isBusy)
-        } header: {
-            Text("Steam Play")
+            bridge(status)
         } footer: {
             Text("Removing Steam Play puts Steam back exactly as Valve ships it. Your games, saves and Steam account are not touched.")
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -129,56 +110,20 @@ struct EngineView: View {
         }
     }
 
-    private func graphics(_ status: TanninStatus) -> some View {
-        Section("Graphics Layers") {
-            LabeledContent {
-                Button(status.d3dMetalVersion == nil ? "Choose Disk Image…" : "Replace…") { isChoosingToolkit = true }
-                    .disabled(model.isBusy)
-            } label: {
-                Text(status.d3dMetalVersion.map { "D3DMetal \($0)" } ?? "D3DMetal is not added")
-                Text(status.d3dMetalVersion == nil
-                    ? "Apple's layer, for Direct3D 12 games. From your own copy of the Game Porting Toolkit, free with an Apple account."
-                    : "Apple's layer, from your Game Porting Toolkit. Apple's signature is valid.")
-            }
-            LabeledContent {
-                state("Included", .ok)
-            } label: {
-                Text("DXMT \(LayerStore.dxmtVersion)")
-                Text("Direct3D 10 and 11. Comes inside the Wine engine.")
-            }
-            LabeledContent {
-                state("Included", .ok)
-            } label: {
-                Text("DXVK \(LayerStore.dxvkVersion)")
-                Text("Direct3D 11 through Vulkan. Comes inside the Wine engine.")
-            }
-        }
-    }
-
     private func bridge(_ status: TanninStatus) -> some View {
-        Section("Steam Bridge") {
-            LabeledContent {
-                if !status.engineInstalled {
-                    state("Not installed", .pending)
-                } else if status.runnerProblems.isEmpty {
-                    state("In place", .ok)
-                } else {
-                    state("Needs attention", .warning)
-                }
-            } label: {
-                Text("Steam Bridge \(status.bridgeVersion)")
-                Text(status.runnerProblems.isEmpty || !status.engineInstalled
-                    ? "Lets games talk to Steam. Built on the NotProton project."
-                    : status.runnerProblems.joined(separator: " "))
+        LabeledContent {
+            if !status.engineInstalled {
+                StateLabel("Not installed", .pending)
+            } else if status.runnerProblems.isEmpty {
+                StateLabel("In place", .ok)
+            } else {
+                StateLabel("Needs attention", .warning)
             }
+        } label: {
+            Text("Steam Bridge \(status.bridgeVersion)")
+            Text(status.runnerProblems.isEmpty || !status.engineInstalled
+                ? "Lets games talk to Steam. Built on the NotProton project."
+                : status.runnerProblems.joined(separator: " "))
         }
-    }
-
-    private func state(_ text: String, _ symbol: StatusSymbol) -> some View {
-        HStack(spacing: 5) {
-            symbol.image
-            Text(text)
-        }
-        .accessibilityElement(children: .combine)
     }
 }

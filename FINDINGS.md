@@ -675,3 +675,44 @@ This Mac is back to one engine (Wine 11.19) and the copies made by these tests w
 **Not done yet:** the row and the notice pressed in the running app on the real game, and the screens seen with
 their real glass (both need the screen unlocked); how the game's window was drawn in this last run (it could not
 be captured); any other game that needs a fixed window.
+
+## 2026-11-18: Engines & Renderers (0.6.0)
+
+The Engine page was one page for four unlike things, and Apple's toolkit was treated as a subject of its own.
+It is now a renderer among three. What was built, and what was seen working:
+
+- **Two pages.** Steam Play (the switch, the freeze, the Steam bridge, unfinished setup, what follows an
+  update) and Engines & Renderers (two lists whose rows work the same way). Setup has five steps; an old
+  `toolkit-skipped` file is ignored. Nothing on disk moves, and the launch options are unchanged, so a game
+  keeps its choice.
+- **D3DMetal can be removed, and replacing leaves one version.** `tannin d3dmetal remove` took it out of the
+  runner and moved Tannin's copy to the Trash; LEGO Builder's Journey, started from Steam afterwards, ran on
+  DXMT (its log has DXMT's feature-level lines). `tannin d3dmetal add <disk image>`, with Steam left open,
+  put it back; the next start ran on D3DMetal. Both refuse while a Windows game is running, and that check
+  also counts a Wine server left over from a probe a few seconds earlier.
+- **What a Direct3D 12 program leaves behind without D3DMetal.** `Tools/smoke/d3d12smoke.exe` on the runner
+  with D3DMetal removed: `D3D12CreateDevice` returns `0x80004002`, and DXMT writes
+  `warn:  DXGIAdapter: Unknown interface query f0db4c7f-fe5a-42a2-bd62-f2a6cf6fc83e`, which is Wine's own
+  Direct3D 12 asking DXMT's DXGI for an interface only Wine's has. LEGO Builder's Journey leaves the same line
+  and then DXMT's start-up lines, because it settles for Direct3D 11. So the line alone means "asked"; the
+  line with no renderer's start-up lines after it is taken to mean "needed", and the game's page then says so
+  with an Add button. That second case has only been seen with the probe, not with a real game.
+- **A pop-up entry's second line.** In a `Picker` shown as a pop-up, two texts in a stack draw the first alone.
+  The entries of the layer pop-up in 0.3.0 to 0.5.0 were written that way, so their second lines ("Direct3D 10
+  and 11") were never on screen; nobody had seen the menu open, because the screen was locked for those
+  rounds. A `Button` whose label holds two texts draws both and still selects through its tag. `.badge` on an
+  entry draws at its trailing edge, which is where "Add…" sits.
+- **In the running app, on this Mac:** D3DMetal removed from its row (the question names the game that uses
+  it); the Renderer pop-up then offers D3DMetal with "Add…"; the sheet refused a folder with no toolkit in it
+  and said why in place, then took Apple's disk image, showed "Checking Apple's signature…", closed, and left
+  the game set to D3DMetal with Save Changes waiting. Wine 11.17 chosen from the Wine Version pop-up asked
+  once, downloaded with Steam open while the row showed the download, and the "is here" notice appeared; its
+  Move button raised the usual confirmation, and Not Now took the notice away. The engine was removed again
+  from its row.
+- 98 tests pass. Every state has a picture taken with the system's capture, compared with boards E01 to E08.
+
+**Not done yet:** the move itself after a fetch was not pressed (it would have quit Steam; it is the same call
+the pop-up has made since 0.4.0); a disk image dropped on the sheet; a copy Apple did not sign (there is none to
+try with); removing D3DMetal with Steam open and then starting a game without restarting Steam (Steam happened
+to be closed when it was removed; adding was done with it open); a real game that needs Direct3D 12; a second
+Mac.

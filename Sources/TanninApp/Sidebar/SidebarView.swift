@@ -51,7 +51,7 @@ struct SidebarView: View {
             if !isSearching {
                 Section("Tannin") {
                     HStack {
-                        Label("Engine", systemImage: "cpu")
+                        Label("Steam Play", systemImage: "play.rectangle")
                         if model.problem?.isWarning == true {
                             Spacer(minLength: 0)
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -59,7 +59,9 @@ struct SidebarView: View {
                                 .accessibilityLabel("Needs attention")
                         }
                     }
-                    .tag(SidebarSelection.engine)
+                    .tag(SidebarSelection.steamPlay)
+                    Label("Engines & Renderers", systemImage: "cpu")
+                        .tag(SidebarSelection.renderers)
                     Label("Logs", systemImage: "doc.text")
                         .tag(SidebarSelection.logs)
                 }

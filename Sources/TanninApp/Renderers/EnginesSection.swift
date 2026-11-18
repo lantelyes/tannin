@@ -3,7 +3,7 @@ import TanninCore
 
 /// The Wine engines Tannin has tested, as a list: which are installed, which is the default, the games on each,
 /// and the button that installs one. Only engines that come with this Tannin are listed.
-struct WineEnginesSection: View {
+struct EnginesSection: View {
     @Environment(AppModel.self) private var model
     @State private var removing: EngineRow?
     @State private var isRemoving = false
@@ -11,7 +11,7 @@ struct WineEnginesSection: View {
     @State private var isMakingDefault = false
 
     var body: some View {
-        Section(model.engines.count > 1 ? "Wine Engines" : "Wine Engine") {
+        Section("Engines") {
             ForEach(model.engines) { row in
                 LabeledContent {
                     control(row)
@@ -20,7 +20,7 @@ struct WineEnginesSection: View {
                         Text(row.spec.title)
                         caption(row)
                     } icon: {
-                        mark(row)
+                        ComponentTile(kind: .engine, isOnThisMac: row.isInstalled)
                     }
                 }
             }
@@ -45,46 +45,32 @@ struct WineEnginesSection: View {
         model.engineProgress?.spec == row.spec ? model.engineProgress : nil
     }
 
-    // MARK: Pieces of a row
+    /// The engine setup installs is not offered here before setup has: setup builds the Steam bridge around it.
+    private var setupHasInstalledAnEngine: Bool { model.status?.engineInstalled == true }
 
-    @ViewBuilder private func mark(_ row: EngineRow) -> some View {
-        if let progress = progress(row), !progress.isPaused {
-            ProgressView().controlSize(.small)
-        } else if row.isInstalled {
-            StatusSymbol.ok.image
-        } else {
-            StatusSymbol.download.image
-        }
-    }
+    // MARK: Pieces of a row
 
     @ViewBuilder private func caption(_ row: EngineRow) -> some View {
         if let progress = progress(row) {
-            Text(downloadCaption(progress, row: row))
-            if let fraction = progress.download?.fraction, progress.download?.isVerifying == false || progress.isPaused {
+            Text(progress.caption())
+            if let fraction = progress.fraction {
                 ProgressView(value: fraction)
                     .accessibilityLabel("\(row.spec.title) download")
             }
         } else if row.isInstalled {
             Text(installedCaption(row))
+        } else if row.spec == .newest, !setupHasInstalledAnEngine {
+            Text("\(row.spec.note) Setup downloads it.")
         } else {
-            Text("\(row.spec.note) \((row.spec.pin.size ?? 0).formatted(.byteCount(style: .file))) to download.")
+            Text("\(row.spec.note) \(row.spec.downloadSize) to download.")
         }
     }
 
     private func installedCaption(_ row: EngineRow) -> String {
-        var facts = [row.games.count == 1 ? "1 game" : "\(row.games.count) games"]
+        var facts = [row.games.count.gamesPhrase]
         if let size = row.size { facts.append(size.formatted(.byteCount(style: .file))) }
         let line = facts.joined(separator: " · ")
-        guard model.engines.count(where: \.isInstalled) > 1 else { return line + ". Built from CodeWeavers' published source." }
         return row.isDefault ? "The default. " + line : line
-    }
-
-    private func downloadCaption(_ progress: EngineProgress, row: EngineRow) -> String {
-        guard let download = progress.download else { return progress.isPaused ? "Paused." : "Starting…" }
-        if download.isVerifying { return "Checking the download and unpacking it…" }
-        let received = download.received.formatted(.byteCount(style: .file, allowedUnits: .mb))
-        let amount = download.total.map { "\(received) of \($0.formatted(.byteCount(style: .file, allowedUnits: .mb)))" } ?? received
-        return progress.isPaused ? "Paused at \(amount)." : "Downloading. \(amount)."
     }
 
     @ViewBuilder private func control(_ row: EngineRow) -> some View {
@@ -97,36 +83,32 @@ struct WineEnginesSection: View {
                     .disabled(progress.download?.isVerifying == true)
             }
         } else if !row.isInstalled {
-            Button("Install") { Task { await model.installEngine(row.spec) } }
-                .disabled(model.isBusy || model.status?.engineInstalled != true)
-        } else if model.engines.count(where: \.isInstalled) > 1 {
-            if row.isDefault {
-                Text("Default").foregroundStyle(.secondary)
+            if row.spec == .newest, !setupHasInstalledAnEngine {
+                Text("Not installed").foregroundStyle(.secondary)
+            } else {
+                Button("Install") { Task { await model.installEngine(row.spec) } }
+                    .disabled(model.isBusy || !setupHasInstalledAnEngine)
             }
+        } else {
+            StateLabel("Installed", .ok)
             Menu("More", systemImage: "ellipsis") {
                 Button("Make Default") {
                     makingDefault = row
                     isMakingDefault = true
                 }
-                    .disabled(row.isDefault)
+                .disabled(row.isDefault)
                 Button("Show in Finder") { model.showEngineInFinder(row.spec) }
                 Divider()
                 Button("Remove…") {
                     removing = row
                     isRemoving = true
                 }
-                    .disabled(row.isDefault || row.spec == .newest)
+                .disabled(row.isDefault || row.spec == .newest)
             }
             .labelStyle(.iconOnly)
             .menuIndicator(.hidden)
             .fixedSize()
             .disabled(model.isBusy)
-        } else {
-            HStack(spacing: 5) {
-                StatusSymbol.ok.image
-                Text("Installed")
-            }
-            .accessibilityElement(children: .combine)
         }
     }
 

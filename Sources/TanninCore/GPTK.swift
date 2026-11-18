@@ -8,14 +8,23 @@ public enum GPTKError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .notAToolkit(path):
-            return "\(path) does not contain Apple's evaluation environment (no redist/lib with D3DMetal.framework)."
-        case let .notApple(detail):
-            return "D3DMetal is not signed by Apple (\(detail)). Nothing was imported. Download the toolkit again from Apple."
-        case .notImported: return "No Game Porting Toolkit has been imported. Run: tannin gptk import <disk image>"
+        case .notAToolkit:
+            return "That disk image has no D3DMetal in it. It should be Apple's Game Porting Toolkit."
+        case .notApple:
+            return "Apple's signature on this copy did not check out. Nothing was changed."
+        case .notImported: return "D3DMetal has not been added. Run: tannin d3dmetal add <disk image>"
         case .runnerMissing: return "The runner has not been built. Run: tannin runner build"
         }
     }
+}
+
+/// How Tannin gets rid of something it put on the Mac: to the Trash, so it can be put back.
+struct Disposal: Sendable {
+    let run: @Sendable (URL) throws -> Void
+
+    static let trash = Disposal { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
+    /// For tests, which should leave nothing in the Trash.
+    static let delete = Disposal { try FileManager.default.removeItem(at: $0) }
 }
 
 /// Apple's Game Porting Toolkit: imported from the user's own download, never bundled and never modified.
@@ -63,6 +72,20 @@ public struct GPTK: Sendable {
     public func current() throws -> Imported {
         guard let newest = imported().last else { throw GPTKError.notImported }
         return newest
+    }
+
+    /// The folder Tannin keeps one imported version in.
+    func folder(of toolkit: Imported) -> URL { toolkit.lib.deletingLastPathComponent() }
+
+    /// Gets rid of every imported version but this one. One D3DMetal at a time: without this, replacing a
+    /// newer version with an older one would leave both, and the newer name would be picked up again later.
+    func retireOthers(keeping toolkit: Imported, disposal: Disposal = .trash) throws {
+        for other in imported() where other.version != toolkit.version { try disposal.run(folder(of: other)) }
+    }
+
+    /// Gets rid of every imported version. The user's own disk image is somewhere else and is not touched.
+    func removeAll(disposal: Disposal = .trash) throws {
+        for toolkit in imported() { try disposal.run(folder(of: toolkit)) }
     }
 
     /// Imports from Apple's disk image (outer or inner) or from an already opened folder.

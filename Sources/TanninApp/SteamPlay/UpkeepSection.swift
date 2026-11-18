@@ -68,7 +68,7 @@ struct UpkeepSection: View {
 
     private func workingTitle(_ item: Upkeep.Item) -> String {
         switch item {
-        case .graphicsLayers: "Adding the graphics layers…"
+        case .graphicsLayers: "Adding the renderers…"
         }
     }
 }

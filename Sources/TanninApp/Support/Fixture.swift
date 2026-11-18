@@ -26,6 +26,11 @@ struct Fixture {
     var gamesWithEnvironment: Set<String> = ["1544360", "50300"]
     var runningGames: Set<String> = []
     var refusedScreenSize: Set<String> = []
+    var neededDirect3D12: Set<String> = []
+    /// The Wine version a game's page fetched and the game has not moved to yet.
+    var wantedEngines: [String: EngineSpec] = [:]
+    /// Set to show the Add D3DMetal sheet, in this state.
+    var d3dMetalAdd: D3DMetalAdd?
 
     /// Every drawn state of the main window, by the name its picture is saved under.
     static var mainWindowScenarios: [(name: String, fixture: Fixture)] {
@@ -39,25 +44,50 @@ struct Fixture {
             ("game-direct3d-9", thirtyTwoBit(ran: .wineOwn)),
             ("game-no-toolkit", Fixture(status: noToolkit, library: Library(installed: [legoCapped], notInstalled: [silentHunter, specOps]),
                                         selection: .game(lego.appID), layerUsage: [lego.appID: .dxmt])),
-            ("engine", Fixture(status: ready, library: library, selection: .engine)),
-            ("engine-no-toolkit", Fixture(status: noToolkit, library: library, selection: .engine)),
-            ("engine-after-update", Fixture(status: ready, library: library, selection: .engine, upkeep: [.graphicsLayers])),
-            ("engine-after-update-working", Fixture(status: ready, library: library, selection: .engine, upkeep: [.graphicsLayers],
-                                                    upkeepProgress: .working(.graphicsLayers))),
-            ("engine-after-update-finished", Fixture(status: ready, library: library, selection: .engine, upkeepProgress: .finished)),
-            ("engine-after-update-failed", Fixture(status: ready, library: library, selection: .engine, upkeep: [.graphicsLayers],
-                                                   upkeepProgress: .failed(.graphicsLayers, "A Windows game is running. Quit it first, then try again."))),
+            ("steam-play", Fixture(status: ready, library: library, selection: .steamPlay)),
+            ("steam-play-off", Fixture(status: steamPlayOff, library: library, selection: .steamPlay)),
+            ("steam-play-steam-moved", Fixture(status: steamUpdated, library: library, selection: .steamPlay)),
+            ("steam-play-other-tool", Fixture(status: status(steamPlay: .foreign("/usr/local/lib/other.dylib")), library: library, selection: .steamPlay)),
+            ("steam-play-setup-unfinished", Fixture(status: nothingInstalled, library: .empty, selection: .steamPlay, engines: noEngine)),
+            ("steam-play-after-update", Fixture(status: ready, library: library, selection: .steamPlay, upkeep: [.graphicsLayers])),
+            ("steam-play-after-update-working", Fixture(status: ready, library: library, selection: .steamPlay, upkeep: [.graphicsLayers],
+                                                        upkeepProgress: .working(.graphicsLayers))),
+            ("steam-play-after-update-finished", Fixture(status: ready, library: library, selection: .steamPlay, upkeepProgress: .finished)),
+            ("steam-play-after-update-failed", Fixture(status: ready, library: library, selection: .steamPlay, upkeep: [.graphicsLayers],
+                                                       upkeepProgress: .failed(.graphicsLayers, "A Windows game is running. Quit it first, then try again."))),
             ("after-update-sidebar", Fixture(status: ready, library: library, selection: .game(lego.appID), upkeep: [.graphicsLayers],
                                              layerUsage: [lego.appID: .d3dMetal])),
-            ("engines-downloading", Fixture(status: ready, library: library, selection: .engine, engineProgress: EngineProgress(
-                spec: .wine1117,
-                download: DownloadProgress(name: Pins.engine1117.name, received: 212_000_000, total: Pins.engine1117.size, isVerifying: false)))),
-            ("engines-two", Fixture(status: ready, library: twoGames, selection: .engine, engines: twoEngines)),
+            ("renderers", Fixture(status: ready, library: threeGames, selection: .renderers, layerUsage: threeGamesUsage, engines: oneEngineThreeGames)),
+            ("renderers-no-d3dmetal", Fixture(status: noToolkit, library: threeGames, selection: .renderers, layerUsage: threeGamesUsage,
+                                              engines: oneEngineThreeGames)),
+            ("renderers-downloading", Fixture(status: ready, library: library, selection: .renderers, engineProgress: downloading)),
+            ("renderers-paused", Fixture(status: ready, library: library, selection: .renderers, engineProgress: paused)),
+            ("renderers-two-engines", Fixture(status: ready, library: twoGames, selection: .renderers, engines: twoEngines)),
+            ("renderers-setup-unfinished", Fixture(status: nothingInstalled, library: .empty, selection: .renderers, engines: noEngine)),
+            ("d3dmetal-sheet", Fixture(status: noToolkit, library: library, selection: .renderers, d3dMetalAdd: .idle)),
+            ("d3dmetal-sheet-checking", Fixture(status: noToolkit, library: library, selection: .renderers,
+                                                d3dMetalAdd: .checking("Game_Porting_Toolkit_4.0_beta_3.dmg"))),
+            ("d3dmetal-sheet-not-signed", Fixture(status: noToolkit, library: library, selection: .renderers,
+                                                  d3dMetalAdd: .failed(GPTKError.notApple("").description))),
+            ("d3dmetal-sheet-wrong-image", Fixture(status: noToolkit, library: library, selection: .renderers,
+                                                   d3dMetalAdd: .failed(GPTKError.notAToolkit("").description))),
+            ("d3dmetal-sheet-replace", Fixture(status: ready, library: library, selection: .renderers, d3dMetalAdd: .idle)),
             ("game-wine", wineVersion(pin: nil)),
             ("game-wine-pinned", wineVersion(pin: .wine1117)),
             ("game-wine-moved", wineVersion(pin: .wine1117, justMoved: true)),
             ("game-wine-removed", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
                                           gameEngines: [lego.appID: GameEngine(pin: .wine1117, runsOn: .wine1119)])),
+            ("game-d3dmetal-removed", Fixture(status: noToolkit, library: Library(installed: [legoOnD3DMetal], notInstalled: [silentHunter, specOps]),
+                                              selection: .game(lego.appID), layerUsage: [lego.appID: .dxmt])),
+            ("game-needs-direct3d-12", Fixture(status: noToolkit, library: Library(installed: [legoCapped], notInstalled: [silentHunter, specOps]),
+                                               selection: .game(lego.appID), neededDirect3D12: [lego.appID])),
+            ("game-wine-fetching", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
+                                           engineProgress: downloading, wantedEngines: [lego.appID: .wine1117])),
+            ("game-wine-fetch-paused", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
+                                               engineProgress: paused, wantedEngines: [lego.appID: .wine1117])),
+            ("game-wine-arrived", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
+                                          engines: twoEngines, gameEngines: [lego.appID: GameEngine(pin: nil, runsOn: .wine1119)],
+                                          wantedEngines: [lego.appID: .wine1117])),
             ("game-fixed-window", fixedWindow(size: .usual)),
             ("game-fixed-window-off", fixedWindow(size: nil)),
             ("game-fixed-window-notice", fixedWindow(size: nil, refused: true)),
@@ -68,7 +98,7 @@ struct Fixture {
             ("not-installed", Fixture(status: ready, library: library, selection: .game(silentHunter.appID))),
             ("not-installed-no-toolkit", Fixture(status: noToolkit, library: library, selection: .game(silentHunter.appID))),
             ("attention", Fixture(status: steamUpdated, library: library, selection: .game(lego.appID))),
-            ("sheet", Fixture(status: steamPlayOff, library: library, selection: .engine, isShowingSteamPlaySheet: true)),
+            ("sheet", Fixture(status: steamPlayOff, library: library, selection: .steamPlay, isShowingSteamPlaySheet: true)),
             ("update", Fixture(status: ready, library: library, selection: .game(lego.appID), updates: newer)),
             ("steam-moved-update", steamMoved(newer)),
             ("steam-moved-none", steamMoved(.upToDate)),
@@ -77,19 +107,18 @@ struct Fixture {
         ]
     }
 
-    /// The setup window in each state of the toolkit step.
+    /// The setup window: part-way through the download, waiting for its last step, and done.
     static var setupScenarios: [(name: String, fixture: Fixture)] {
-        func setup(_ toolkit: Setup.State) -> Fixture {
-            Fixture(status: toolkit.isDone ? steamPlayOff : noToolkitOff, library: .empty, setup: [
-                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .done("Wine 11.19"), .toolkit: toolkit,
-                .bridge: .done("NotProton 1.2.6"), .steamPlay: .ready,
+        func setup(steamPlay: Setup.State) -> Fixture {
+            Fixture(status: steamPlay.isDone ? ready : steamPlayOff, library: .empty, setup: [
+                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .done("Wine 11.19"),
+                .bridge: .done("NotProton 1.2.6"), .steamPlay: steamPlay,
             ])
         }
         return [
             ("setup", setupDownloading),
-            ("setup-toolkit", setup(.ready)),
-            ("setup-toolkit-skipped", setup(.skipped("Skipped. Games use DXMT. You can add it later on the Engine page."))),
-            ("setup-toolkit-added", setup(.done("D3DMetal 4.0b3"))),
+            ("setup-last-step", setup(steamPlay: .ready)),
+            ("setup-done", setup(steamPlay: .done("On"))),
         ]
     }
 
@@ -104,7 +133,7 @@ struct Fixture {
             status: steamPlayOff,
             library: .empty,
             setup: [
-                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .ready, .toolkit: .ready,
+                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .ready,
                 .bridge: .waiting("Needs the Wine engine first"), .steamPlay: .waiting("Needs the steps above first"),
             ],
             setupProgress: SetupProgress(
@@ -118,13 +147,14 @@ struct Fixture {
 
     private static let setupDone: [Setup.Step: Setup.State] = [
         .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .done("Wine 11.19"),
-        .toolkit: .done("D3DMetal 4.0b3"), .bridge: .done("NotProton 1.2.6"), .steamPlay: .done("On"),
+        .bridge: .done("NotProton 1.2.6"), .steamPlay: .done("On"),
     ]
 
-    private static func status(steamPlay: SteamAddon.State = .on, addonLoaded: Bool? = true, d3dMetal: String? = "4.0b3") -> TanninStatus {
+    private static func status(steamPlay: SteamAddon.State = .on, addonLoaded: Bool? = true, d3dMetal: String? = "4.0b3",
+                               engineInstalled: Bool = true) -> TanninStatus {
         TanninStatus(
             steamInstalled: true, steamPlay: steamPlay, steamBuild: "1794536281", steamRunning: false,
-            steamIsValveSigned: steamPlay == .off, addonLoaded: addonLoaded, updateFreeze: true, engineInstalled: true,
+            steamIsValveSigned: steamPlay == .off, addonLoaded: addonLoaded, updateFreeze: steamPlay != .off, engineInstalled: engineInstalled,
             engineWine: Pins.engineWine, d3dMetalVersion: d3dMetal, bridgeVersion: Pins.notProtonVersion, runnerProblems: []
         )
     }
@@ -134,6 +164,26 @@ struct Fixture {
         EngineRow(spec: .wine1119, isInstalled: true, isDefault: true, games: ["1544360"], size: 1_300_000_000),
         EngineRow(spec: .wine1117, isInstalled: false, isDefault: false, games: [], size: nil),
     ]
+
+    /// The list on a Mac with three games, as the board draws it.
+    private static let oneEngineThreeGames: [EngineRow] = [
+        EngineRow(spec: .wine1119, isInstalled: true, isDefault: true, games: ["1544360", "15210", "50300"], size: 1_300_000_000),
+        EngineRow(spec: .wine1117, isInstalled: false, isDefault: false, games: [], size: nil),
+    ]
+
+    /// Before setup has installed anything.
+    private static let noEngine: [EngineRow] = [
+        EngineRow(spec: .wine1119, isInstalled: false, isDefault: false, games: [], size: nil),
+        EngineRow(spec: .wine1117, isInstalled: false, isDefault: false, games: [], size: nil),
+    ]
+
+    private static let downloading = EngineProgress(
+        spec: .wine1117,
+        download: DownloadProgress(name: Pins.engine1117.name, received: 212_000_000, total: Pins.engine1117.size, isVerifying: false))
+    private static let paused = EngineProgress(
+        spec: .wine1117,
+        download: DownloadProgress(name: Pins.engine1117.name, received: 212_000_000, total: Pins.engine1117.size, isVerifying: false),
+        isPaused: true)
 
     private static let twoEngines: [EngineRow] = [
         EngineRow(spec: .wine1119, isInstalled: true, isDefault: true, games: ["1544360"], size: 1_300_000_000),
@@ -163,7 +213,7 @@ struct Fixture {
     private static let steamUpdated = status(addonLoaded: false)
     private static let steamPlayOff = status(steamPlay: .off, addonLoaded: nil)
     private static let noToolkit = status(d3dMetal: nil)
-    private static let noToolkitOff = status(steamPlay: .off, addonLoaded: nil, d3dMetal: nil)
+    private static let nothingInstalled = status(steamPlay: .off, addonLoaded: nil, d3dMetal: nil, engineInstalled: false)
 
     /// The game page with a layer chosen by hand, and what the game last ran on.
     private static func chosen(_ options: String, ran: LayerUsage?) -> Fixture {
@@ -199,7 +249,12 @@ struct Fixture {
     private static let specOpsInstalled = game("50300", "Spec Ops: The Line", install: .installed, size: 7_800_000_000, is32Bit: true)
     private static let silentHunter = game("15210", "Silent Hunter III", install: .notInstalled)
     private static let silentHunterInstalled = game("15210", "Silent Hunter III", install: .installed, size: 2_610_000_000, is32Bit: true)
+    private static let legoOnD3DMetal = game("1544360", "LEGO® Builder's Journey", install: .installed, size: 4_322_970_119,
+                                             options: "NOTPROTON_ENV_TANNIN_LAYER=d3dmetal D3DM_MAX_FPS=60 %command%", is32Bit: false)
     private static let library = Library(installed: [lego], notInstalled: [silentHunter, specOps])
+    private static let threeGames = Library(installed: [lego, silentHunterInstalled, specOpsInstalled], notInstalled: [])
+    /// One game on D3DMetal, one drawn by Wine itself, one on DXMT.
+    private static let threeGamesUsage: [String: LayerUsage] = [lego.appID: .d3dMetal, silentHunterInstalled.appID: .wineOwn, specOpsInstalled.appID: .dxmt]
     private static let twoGames = Library(installed: [lego, specOpsInstalled], notInstalled: [silentHunter])
 
     private static let log: [LogLine] = [

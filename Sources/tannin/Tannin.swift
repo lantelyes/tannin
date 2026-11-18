@@ -8,42 +8,43 @@ struct Tannin: ParsableCommand {
         commandName: "tannin",
         abstract: "Free Steam Play for Mac: Windows games from the native Steam client.",
         version: TanninVersion.current,
-        subcommands: [DoctorCommand.self, SetupCommand.self, EngineCommand.self, GPTKCommand.self, KitCommand.self, RunnerCommand.self, LayersCommand.self, UpkeepCommand.self, SteamCommand.self, GameCommand.self]
+        subcommands: [DoctorCommand.self, SetupCommand.self, EngineCommand.self, D3DMetalCommand.self, KitCommand.self, RunnerCommand.self, RenderersCommand.self, UpkeepCommand.self, SteamCommand.self, GameCommand.self]
     )
 }
 
-struct GPTKCommand: ParsableCommand {
+struct D3DMetalCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "gptk",
-        abstract: "Apple's Game Porting Toolkit (D3DMetal), from your own download.",
-        subcommands: [Import.self, Skip.self, Link.self, Unlink.self, Status.self]
+        commandName: "d3dmetal",
+        abstract: "Apple's D3DMetal renderer, from your own copy of the Game Porting Toolkit.",
+        subcommands: [Add.self, Remove.self, Link.self, Unlink.self, Status.self],
+        aliases: ["gptk"]
     )
 
-    struct Import: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Import D3DMetal from Apple's disk image after checking Apple's signature, then link it into the runner.")
+    struct Add: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Add D3DMetal from Apple's disk image after checking Apple's signature. A version that was there before is replaced.",
+            aliases: ["import"]
+        )
 
         @Argument(help: "Apple's Game Porting Toolkit disk image, or an opened folder.")
         var source: String
 
         func run() throws {
-            let toolkit = try GPTK().importToolkit(from: URL(fileURLWithPath: (source as NSString).expandingTildeInPath))
-            print("Imported D3DMetal \(toolkit.version). Apple's signature verified.")
-            try? FileManager.default.removeItem(at: Paths.live.toolkitSkipped)
-            try EngineStore().linkToolkit(toolkit)
-            print("Linked into the runner.")
+            let toolkit = try EngineStore().addD3DMetal(from: URL(fileURLWithPath: (source as NSString).expandingTildeInPath))
+            print("Added D3DMetal \(toolkit.version). Apple's signature verified. 64-bit games on Automatic now use it.")
         }
     }
 
-    struct Skip: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Go without Apple's toolkit for now. Games then run on DXMT; Direct3D 12 games need the toolkit.")
+    struct Remove: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Take D3DMetal out and move Tannin's copy to the Trash. Games then run on DXMT. Your disk image is not touched.")
         func run() throws {
-            try Setup().skipToolkit()
-            print("Skipped. Import it any time with: tannin gptk import <disk image>")
+            try EngineStore().removeD3DMetal()
+            print("D3DMetal removed. Games now run on DXMT; Direct3D 12 games need it added again.")
         }
     }
 
     struct Link: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Link the newest imported D3DMetal into the runner.")
+        static let configuration = CommandConfiguration(abstract: "Put the D3DMetal that has been added back into the runner.")
         func run() throws {
             let toolkit = try GPTK().current()
             try EngineStore().linkToolkit(toolkit)
@@ -52,19 +53,19 @@ struct GPTKCommand: ParsableCommand {
     }
 
     struct Unlink: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Take D3DMetal out of the runner and put Wine's own files back.")
+        static let configuration = CommandConfiguration(abstract: "Take D3DMetal out of the runner and put Wine's own files back, keeping Tannin's copy.")
         func run() throws {
             try EngineStore().unlinkToolkit()
-            print("D3DMetal removed from the runner. Games now run on DXMT.")
+            print("D3DMetal taken out of the runner. Games now run on DXMT.")
         }
     }
 
     struct Status: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Show imported and linked versions.")
+        static let configuration = CommandConfiguration(abstract: "Show the version that has been added and the one in the runner.")
         func run() throws {
             let imported = GPTK().imported().map(\.version)
-            print("Imported: \(imported.isEmpty ? "none" : imported.joined(separator: ", "))")
-            print("Linked:   \(D3DMetalLink().linkedVersion() ?? "none")")
+            print("Added:  \(imported.isEmpty ? "none" : imported.joined(separator: ", "))")
+            print("In use: \(D3DMetalLink().linkedVersion() ?? "none")")
         }
     }
 }
@@ -208,7 +209,7 @@ struct GameCommand: ParsableCommand {
         @Argument(help: "The game's Steam app ID.")
         var appID: String
 
-        @Option(name: .long, help: "Graphics layer: automatic, d3dmetal, dxmt or dxvk.") var layer: String?
+        @Option(name: [.customLong("renderer"), .customLong("layer")], help: "Renderer: automatic, d3dmetal, dxmt or dxvk.") var layer: String?
         @Option(name: .long, help: "Ray tracing (D3DMetal): on or off.") var dxr: String?
         @Option(name: .long, help: "MetalFX upscaling (D3DMetal): on or off.") var metalfx: String?
         @Option(name: .long, help: "Metal 4 renderer (D3DMetal): on or off.") var metal4: String?
@@ -231,7 +232,7 @@ struct GameCommand: ParsableCommand {
             var settings = reset ? GameSettings() : GameSettings(parsing: existing)
             if let layer {
                 let names: [String: GraphicsLayer] = ["automatic": .automatic, "d3dmetal": .d3dMetal, "dxmt": .dxmt, "dxvk": .dxvk]
-                guard let chosen = names[layer.lowercased()] else { throw ValidationError("--layer takes automatic, d3dmetal, dxmt or dxvk.") }
+                guard let chosen = names[layer.lowercased()] else { throw ValidationError("--renderer takes automatic, d3dmetal, dxmt or dxvk.") }
                 settings.layer = chosen
             }
             if let value = try toggle(dxr, "dxr") { settings.rayTracing = value }
@@ -368,15 +369,16 @@ struct UpkeepCommand: ParsableCommand {
     }
 }
 
-struct LayersCommand: ParsableCommand {
+struct RenderersCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "layers",
-        abstract: "The graphics layers a game can be given: D3DMetal, DXMT, DXVK.",
-        subcommands: [Status.self, Prepare.self]
+        commandName: "renderers",
+        abstract: "The renderers a game can be given: D3DMetal, DXMT, DXVK.",
+        subcommands: [Status.self, Prepare.self],
+        aliases: ["layers"]
     )
 
     struct Status: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Show which layers are in place.")
+        static let configuration = CommandConfiguration(abstract: "Show which renderers are in place.")
         func run() {
             let layers = LayerStore()
             let runner = Runner().root
@@ -388,7 +390,7 @@ struct LayersCommand: ParsableCommand {
     }
 
     struct Prepare: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Put DXMT into the runner and write the files for choosing a layer per game. Downloads nothing and does not touch Steam.")
+        static let configuration = CommandConfiguration(abstract: "Put DXMT into the runner and write the files for choosing a renderer per game. Downloads nothing and does not touch Steam.")
         func run() throws {
             try LayerStore().addToRunner()
             Status().run()
@@ -604,7 +606,6 @@ struct SetupCommand: ParsableCommand {
             case let .done(detail): "done     \(detail)"
             case .ready: "to do"
             case let .waiting(reason): "waiting  \(reason)"
-            case let .skipped(detail): "skipped  \(detail)"
             }
             print("\(step.rawValue.padding(toLength: 11, withPad: " ", startingAt: 0))\(text)")
         }

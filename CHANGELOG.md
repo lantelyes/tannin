@@ -3,6 +3,25 @@
 Every release, newest first, in plain words. `scripts/release.sh` refuses to make a release that
 has no section here, and the same text becomes the notes shown in the update window.
 
+## 0.6.0 (not released yet)
+
+- **Engines & Renderers**, a new page. The Wine engines and the three renderers are two lists that
+  work the same way, and each row says how many of your games use it. Apple's D3DMetal is a renderer
+  like DXMT and DXVK: it is added, replaced and removed there. "Graphics layer" is now "renderer".
+- **A game's page starts with what it runs on:** its Wine version and its renderer, side by side.
+  The settings under them are named for the renderer the game really gets.
+- **Both can be fetched from the game's page.** The Renderer pop-up offers D3DMetal when it is not on
+  your Mac. The Wine Version pop-up offers a version that is not installed; Tannin downloads it with
+  Steam left open, then asks before it moves the game.
+- **Adding D3DMetal** is a small sheet that says where to get Apple's Game Porting Toolkit and takes
+  the disk image, which can also be dropped on it. It says why when a disk image is not accepted.
+- **D3DMetal can be removed.** Games then run on DXMT. Your disk image is not touched.
+- **Steam Play has a page of its own**, with the switch, the update freeze and the Steam bridge.
+- **Setup is five steps.** The Game Porting Toolkit step is gone; nothing in setup needs anything
+  from you until the last step.
+- When a game asks for Direct3D 12 and stops because D3DMetal is not there, its page says so.
+- Nothing on your Mac moves with this update, and every game keeps the choice it had.
+
 ## 0.5.0 (18 November 2026)
 
 - **Fixed Window**, a new setting on a game's page under Advanced. Some old games insist on a

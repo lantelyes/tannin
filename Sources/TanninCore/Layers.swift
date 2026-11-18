@@ -1,10 +1,11 @@
 import Foundation
 
-/// What turns a game's Direct3D calls into Metal.
+/// A renderer: what turns a game's Direct3D calls into Metal. The app calls it a renderer; the code and the
+/// launch options keep the older name, since the launch options are in people's Steam settings.
 public enum GraphicsLayer: String, Sendable, CaseIterable, Identifiable {
-    /// Tannin's own pick: D3DMetal for a 64-bit game when Apple's toolkit has been added, DXMT otherwise.
+    /// Tannin's own pick: D3DMetal for a 64-bit game when D3DMetal has been added, DXMT otherwise.
     case automatic
-    /// Apple's layer, from the user's own Game Porting Toolkit. Direct3D 11 and 12, 64-bit games only.
+    /// Apple's renderer, from the user's own Game Porting Toolkit. Direct3D 11 and 12, 64-bit games only.
     case d3dMetal
     /// Direct3D 10 and 11 straight to Metal. Comes with the Wine engine.
     case dxmt
@@ -26,7 +27,7 @@ public enum GraphicsLayer: String, Sendable, CaseIterable, Identifiable {
     public var summary: String {
         switch self {
         case .automatic: "Tannin picks for each game"
-        case .d3dMetal: "Apple's. Direct3D 11 and 12"
+        case .d3dMetal: "Direct3D 11 and 12"
         case .dxmt: "Direct3D 10 and 11"
         case .dxvk: "Direct3D 11, through Vulkan"
         }
@@ -46,6 +47,21 @@ public enum GraphicsLayer: String, Sendable, CaseIterable, Identifiable {
         guard let is32Bit else { return toolkitAdded ? nil : .dxmt }
         return (!is32Bit && toolkitAdded) ? .d3dMetal : .dxmt
     }
+
+    /// The renderer whose settings a game's page shows: the one chosen by name, or what Automatic comes to.
+    /// Nil when that is not known yet, and for a Direct3D 9 game, which Wine draws itself.
+    public static func inEffect(chosen: GraphicsLayer, is32Bit: Bool?, toolkitAdded: Bool, lastRan: LayerUsage?) -> GraphicsLayer? {
+        guard chosen == .automatic else { return chosen }
+        if lastRan == .wineOwn { return nil }
+        return automaticChoice(is32Bit: is32Bit, toolkitAdded: toolkitAdded)
+    }
+
+    /// The renderer that really draws a game. It differs from `inEffect` in one case: D3DMetal chosen by name
+    /// while it is not on the Mac, where the runner has DXMT in D3DMetal's place.
+    public static func drawing(chosen: GraphicsLayer, is32Bit: Bool?, toolkitAdded: Bool, lastRan: LayerUsage?) -> GraphicsLayer? {
+        let wanted = inEffect(chosen: chosen, is32Bit: is32Bit, toolkitAdded: toolkitAdded, lastRan: lastRan)
+        return wanted == .d3dMetal && !toolkitAdded ? .dxmt : wanted
+    }
 }
 
 public enum LayerError: Error, CustomStringConvertible {
@@ -55,7 +71,7 @@ public enum LayerError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .engineMissing: return "The Wine engine is not installed, so there are no graphics layers to prepare."
+        case .engineMissing: return "The Wine engine is not installed, so there are no renderers to prepare."
         case let .missingFile(path): return "The Wine engine is missing \(path)."
         case let .unexpectedHeader(path): return "\(path) does not look like the file this engine ships. Nothing was changed."
         }

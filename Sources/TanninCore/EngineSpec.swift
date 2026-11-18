@@ -34,7 +34,7 @@ public struct EngineSpec: Sendable, Hashable, Identifiable {
 
     public static let wine1117 = EngineSpec(
         version: "4.7.3", wine: "11.17", pin: Pins.engine1117, build: "tannin-1117",
-        toolName: "notproton-tannin-1117", layerSuffix: "-1117", note: "The engine before it."
+        toolName: "notproton-tannin-1117", layerSuffix: "-1117", note: "The version before it."
     )
 
     /// Every engine this Tannin knows, newest first.

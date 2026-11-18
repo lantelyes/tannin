@@ -10,6 +10,15 @@ public enum UpkeepError: Error, CustomStringConvertible {
     }
 }
 
+/// Whether a Windows game is running. What it runs from must not be changed underneath it.
+public enum WindowsGames {
+    public static func anyRunning(paths: Paths = .live) -> Bool {
+        // A game runs from the add-on's per-game copy of the runner, or from the runner itself.
+        let folders = [paths.notproton.appending(path: "launchers").path, paths.notproton.appending(path: "runners").path]
+        return (try? Shell.run("/usr/bin/pgrep", ["-f", folders.joined(separator: "|")]))?.ok ?? false
+    }
+}
+
 /// Brings what an earlier Tannin installed up to what this one expects, after Tannin has updated itself.
 /// Nothing here runs by itself: `plan()` only looks, and each item is done when the user asks for it.
 public struct Upkeep: Sendable {
@@ -21,14 +30,14 @@ public struct Upkeep: Sendable {
 
         public var title: String {
             switch self {
-            case .graphicsLayers: "Graphics layers are ready to add"
+            case .graphicsLayers: "Renderers are ready to add"
             }
         }
 
         public var detail: String {
             switch self {
             case .graphicsLayers:
-                "Adds DXMT and the Steam bridge for 32-bit games, and the choice of layer on each game's page. Nothing is downloaded and Steam is not changed."
+                "Adds DXMT and the Steam bridge for 32-bit games, and the choice of renderer on each game's page. Nothing is downloaded and Steam is not changed."
             }
         }
 
@@ -50,11 +59,7 @@ public struct Upkeep: Sendable {
     let gameIsRunning: @Sendable () -> Bool
 
     public init(paths: Paths = .live) {
-        self.init(paths: paths) {
-            // A game runs from the add-on's per-game copy of the runner, or from the runner itself.
-            let result = try? Shell.run("/usr/bin/pgrep", ["-f", paths.notproton.appending(path: "launchers").path + "|" + paths.notproton.appending(path: "runners").path])
-            return result?.ok ?? false
-        }
+        self.init(paths: paths) { WindowsGames.anyRunning(paths: paths) }
     }
 
     init(paths: Paths, gameIsRunning: @escaping @Sendable () -> Bool) {

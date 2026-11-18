@@ -134,12 +134,11 @@ final class ProgressLog: @unchecked Sendable {
         #expect(setup.state(of: .rosetta) == .ready)
         #expect(setup.state(of: .steam) == .ready)
         #expect(setup.state(of: .engine) == .ready)
-        #expect(setup.state(of: .toolkit) == .ready)
         #expect(setup.state(of: .bridge) == .waiting("Needs the Wine engine first"))
         #expect(setup.state(of: .steamPlay) == .waiting("Needs the steps above first"))
         #expect(!setup.isReadyForSteamPlay)
 
-        // Rosetta, Steam, the engine and an imported toolkit appear; the bridge can now be done.
+        // Rosetta, Steam and the engine appear; the bridge can now be done. D3DMetal on the Mac is no step.
         try Data().write(to: home.appending(path: "rosetta"))
         try fm.createDirectory(at: paths.steamMacOS, withIntermediateDirectories: true)
         try Data().write(to: paths.steamMacOS.appending(path: "steam_osx"))
@@ -155,7 +154,7 @@ final class ProgressLog: @unchecked Sendable {
         #expect(setup.state(of: .rosetta) == .done("Installed"))
         #expect(setup.state(of: .steam) == .done("In Applications"))
         #expect(setup.state(of: .engine) == .done("Wine \(Pins.engineWine)"))
-        #expect(setup.state(of: .toolkit) == .done("D3DMetal 4.0b3"))
+        #expect(Setup.Step.allCases == [.rosetta, .steam, .engine, .bridge, .steamPlay])
         #expect(setup.state(of: .bridge) == .ready)
         #expect(setup.state(of: .steamPlay) == .waiting("Needs the steps above first"))
     }
