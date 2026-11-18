@@ -3,17 +3,20 @@ import SwiftUI
 @main
 struct TanninApp: App {
     @State private var model = AppModel()
+    @State private var updates = Updates()
     @AppStorage("showMenuBarItem") private var showMenuBarItem = false
 
     var body: some Scene {
         Window("Tannin", id: WindowID.main) {
             RootView()
                 .environment(model)
+                .environment(updates)
         }
         .defaultSize(width: 960, height: 700)
         .defaultLaunchBehavior(model.needsSetupAtLaunch ? .suppressed : .presented)
         .commands {
             SetupCommands()
+            UpdatesCommands(updates: updates)
         }
 
         Window("Set Up Tannin", id: WindowID.setup) {
@@ -26,6 +29,7 @@ struct TanninApp: App {
 
         Settings {
             SettingsView()
+                .environment(updates)
         }
 
         MenuBarExtra(isInserted: $showMenuBarItem) {

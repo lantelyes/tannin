@@ -1,0 +1,24 @@
+# Builds Tannin and runs its tests on every push. Nothing here can publish anything: no secrets,
+# and a token that can only read the repository. Releases are made by scripts/release.sh on the
+# maintainer's Mac.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: swift --version
+      - run: swift build
+      - run: swift test

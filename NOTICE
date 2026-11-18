@@ -16,6 +16,12 @@ checks each against a pinned SHA-256, and redistributes none of it:
 
 - Steam client files, from Valve's own download servers. Copyright Valve Corporation.
 
+The Tannin app includes one piece of other people's software, unchanged:
+
+- Sparkle (https://sparkle-project.org), which checks for and installs updates to Tannin.
+  MIT license, with further notices for the code it includes; the full text is inside the app at
+  Tannin.app/Contents/Resources/Sparkle-LICENSE.txt. The `tannin` command line tool does not use it.
+
 Tannin never includes Apple's Game Porting Toolkit or D3DMetal. You download the toolkit
 from Apple yourself and Tannin imports it after checking Apple's code signature.
 
