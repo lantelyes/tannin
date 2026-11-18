@@ -216,3 +216,12 @@ only; the section above describes an app that no longer exists.
   Steam Play, Replace, or any setup step in the new app. Whether Steam installs a not-installed game without the
   game first being assigned to Tannin's runner is still unknown. The menu bar item and the Settings window were
   not looked at.
+
+## 2026-11-18: new icon
+
+The ink-and-amber ring no longer fitted the app. The user chose option D, "Hex Play", from the "Icon" page of the
+design canvas: a blue six-sided tile with a play triangle on a light tile. `scripts/make-icon.swift` draws it and
+`scripts/bundle.sh` builds `AppIcon.icns` from it; the 1024 px drawing was viewed and matches the option. The menu
+bar item now uses the same mark as a template image (`MenuBarGlyph.swift`); it has not been looked at in the real
+menu bar. The Dark and Tinted appearances on the canvas are not built: they need a layered Icon Composer file,
+which is a manual step. With the `.icns` alone, macOS shows the default appearance.

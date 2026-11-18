@@ -28,9 +28,12 @@ struct TanninApp: App {
             SettingsView()
         }
 
-        MenuBarExtra("Tannin", systemImage: "hexagon", isInserted: $showMenuBarItem) {
+        MenuBarExtra(isInserted: $showMenuBarItem) {
             MenuBarContent()
                 .environment(model)
+        } label: {
+            Image(nsImage: MenuBarGlyph.image)
+                .accessibilityLabel("Tannin")
         }
     }
 }
