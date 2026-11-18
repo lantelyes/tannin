@@ -88,7 +88,7 @@ TANNIN_VERSION="$version" TANNIN_SIGN_IDENTITY="$identity" ./scripts/package.sh 
 if [ -n "$have_certificate" ]; then
   # Updates keep their permissions only if every release answers to the same certificate.
   leaf="$(security find-certificate -c "$certificate" -Z | awk '/SHA-1/ { print tolower($NF) }')"
-  codesign -d -r- build/Tannin.app 2>&1 | tr 'A-F' 'a-f' | grep -q "certificate leaf = h\"$leaf\"" \
+  codesign -d -r- build/Tannin.app 2>&1 | grep -qi "certificate leaf = H\"$leaf\"" \
     || { echo "the app's signature does not name the certificate \"$certificate\""; exit 1; }
 fi
 
