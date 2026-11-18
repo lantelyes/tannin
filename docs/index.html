@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tannin: Steam Play, on your Mac</title>
+<meta name="description" content="Tannin lets Steam for Mac install and play Windows games. Free and open source.">
+<meta property="og:title" content="Tannin: Steam Play, on your Mac">
+<meta property="og:description" content="Tannin lets Steam for Mac install and play Windows games. Free and open source.">
+<meta property="og:image" content="https://lantelyes.github.io/tannin/screenshots/game-light.png">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<header class="wrap nav">
+  <span class="name">Tannin</span>
+  <nav class="links" aria-label="Site">
+    <a href="whats-new.html">What’s new</a>
+    <a href="https://github.com/lantelyes/tannin">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <img class="icon" src="icon.png" width="128" height="128" alt="">
+    <h1>Steam Play, on your Mac.</h1>
+    <p class="sub">On Linux and the Steam Deck, Steam can install and run Windows games. Tannin brings that to Steam for Mac. Free and open source.</p>
+    <!-- scripts/release.sh rewrites the next line for each release. -->
+    <a class="btn" href="https://github.com/lantelyes/tannin/releases/download/v0.1.0/Tannin-0.1.0.zip">Download Tannin 0.1.0</a>
+    <p class="fine">For Macs with Apple silicon, on macOS 26 or later.<br>This is an early test build: so far, one game on one Mac.</p>
+  </div>
+
+  <div class="wrap">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="screenshots/game-dark.png">
+      <img class="shot" src="screenshots/game-light.png" width="1880" height="1280" alt="Tannin’s window: Windows games in the sidebar, and one game’s page with its artwork, a Play button and its graphics settings">
+    </picture>
+  </div>
+
+  <div class="col">
+    <section>
+      <h2>Install</h2>
+      <ol>
+        <li>Open the download and drag Tannin into your Applications folder.</li>
+        <li>Open Tannin. macOS will say it could not verify it, so open System Settings › Privacy &amp; Security and click Open Anyway. You only do this once.</li>
+        <li>Follow Set Up Tannin. It downloads the Wine engine, asks for Apple’s <a href="https://developer.apple.com/download/all/?q=game%20porting%20toolkit">Game Porting Toolkit</a> (free with an Apple account), and asks before it changes Steam.</li>
+      </ol>
+      <p>Then install a Windows game from your Steam library and press Play, in Steam or in Tannin.</p>
+    </section>
+
+    <section>
+      <h2>What it changes in Steam</h2>
+      <p>Valve does not support this. Here is everything Tannin does to Steam.</p>
+      <table>
+        <tr><th scope="row">Adds</th><td>One file inside Steam.app.</td></tr>
+        <tr><th scope="row">Changes</th><td>Two lines of Steam’s settings.</td></tr>
+        <tr><th scope="row">Signs</th><td>Steam again, on your Mac, so that it will load the added file.</td></tr>
+        <tr><th scope="row">Stops</th><td>Steam updating itself, because a Steam update turns Steam Play off.</td></tr>
+        <tr><th scope="row">To undo</th><td>Engine › Remove Steam Play puts back a copy of Steam signed by Valve. Your games, saves and account are not touched.</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>Known limits</h2>
+      <ul>
+        <li>32-bit games start, but without the Steam overlay, achievements or cloud saves.</li>
+        <li>When Steam moves to a build Tannin does not know yet, Steam Play stays off until Tannin catches up. Mac games are not affected.</li>
+        <li>Games whose anti-cheat needs Windows kernel drivers do not run.</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<footer class="wrap foot">
+  Tannin is free software under the GPL, version 3. <a href="https://github.com/lantelyes/tannin">Source on GitHub</a>. Not affiliated with Valve, Apple or CodeWeavers.
+</footer>
+
+</body>
+</html>

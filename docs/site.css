@@ -1,0 +1,105 @@
+/* Tannin's website. One stylesheet, the Mac's own typeface, no scripts. Dark follows the system setting. */
+
+:root {
+  color-scheme: light dark;
+  --bg: #F2F4F7;
+  --ink: #0D1626;
+  --mute: rgba(13, 22, 38, .62);
+  --line: rgba(13, 22, 38, .11);
+  --link: #1A62DE;
+  --btn: #1F6BEA;
+  --onbtn: #FFFFFF;
+  --winedge: rgba(13, 22, 38, .35);
+  --winshadow: rgba(13, 22, 38, .22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0E1116;
+    --ink: #E8ECF3;
+    --mute: rgba(232, 236, 243, .62);
+    --line: rgba(232, 236, 243, .13);
+    --link: #6FA8FF;
+    --btn: #2B72EE;
+    --winedge: rgba(0, 0, 0, .9);
+    --winshadow: rgba(0, 0, 0, .55);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 17px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
+
+.wrap { width: 1000px; max-width: calc(100% - 48px); margin: 0 auto; }
+.col { width: 680px; max-width: calc(100% - 48px); margin: 0 auto; }
+
+/* Top bar */
+.nav { display: flex; align-items: center; height: 64px; font-size: 15px; }
+.nav .name { font-size: 17px; font-weight: 600; color: var(--ink); }
+.nav .links { margin-left: auto; display: flex; gap: 26px; }
+.nav .links a { color: var(--mute); }
+.nav .links a[aria-current] { color: var(--ink); }
+
+/* The top of the landing page */
+.hero { padding: 40px 0 56px; text-align: center; }
+.hero .icon { display: block; width: 128px; height: 128px; margin: 0 auto 26px; }
+h1 { margin: 0; font-size: 52px; line-height: 1.08; font-weight: 700; letter-spacing: -.015em; text-wrap: balance; }
+.sub { max-width: 600px; margin: 18px auto 0; font-size: 20px; line-height: 1.45; color: var(--mute); text-wrap: balance; }
+.btn { display: inline-block; margin-top: 28px; padding: 13px 22px; border-radius: 10px; background: var(--btn); color: var(--onbtn); font-size: 17px; line-height: 22px; font-weight: 600; }
+.btn:hover { text-decoration: none; filter: brightness(1.08); }
+.btn:focus-visible { outline-offset: 3px; border-radius: 10px; }
+.fine { margin: 14px 0 0; font-size: 14px; line-height: 1.5; color: var(--mute); }
+
+/* The app's window, with the shadow a window has */
+.shot { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 1px var(--winedge)) drop-shadow(0 24px 34px var(--winshadow)); }
+
+/* The reading column */
+.col section { margin-top: 64px; }
+h2 { margin: 0 0 14px; font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
+p { margin: 0 0 14px; }
+ol, ul { margin: 0 0 14px; padding-left: 22px; }
+li { margin-bottom: 8px; padding-left: 4px; }
+table { width: 100%; border-collapse: collapse; margin: 4px 0 16px; font-size: 16px; line-height: 1.5; }
+th, td { padding: 10px 0; border-top: 1px solid var(--line); vertical-align: top; text-align: left; font-weight: 400; }
+tr:last-child th, tr:last-child td { border-bottom: 1px solid var(--line); }
+th { width: 104px; color: var(--mute); }
+
+.foot { margin-top: 80px; padding: 24px 0 44px; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.6; color: var(--mute); }
+
+/* What's New: version and date on the left, what changed on the right */
+.news { width: 880px; max-width: calc(100% - 48px); margin: 0 auto; padding: 48px 0 0; }
+.news h1 { font-size: 40px; }
+.news .lead { margin: 10px 0 40px; color: var(--mute); }
+.rel { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px; padding: 32px 0; border-top: 1px solid var(--line); }
+.rel h2 { margin: 0; font-size: 22px; }
+.rel .date { font-size: 15px; color: var(--mute); }
+.rel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--mute); }
+.rel ul { margin-bottom: 18px; }
+.rel .changes > :last-child { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .wrap, .col, .news { max-width: calc(100% - 40px); }
+  .nav { height: 56px; }
+  .nav .links { gap: 18px; }
+  .hero { padding: 20px 0 40px; }
+  .hero .icon { width: 96px; height: 96px; }
+  h1 { font-size: 34px; line-height: 1.12; }
+  .sub { font-size: 18px; }
+  .shot { filter: drop-shadow(0 0 1px var(--winedge)) drop-shadow(0 10px 16px var(--winshadow)); }
+  .col section { margin-top: 44px; }
+  .foot { margin-top: 52px; }
+  .news { padding-top: 28px; }
+  .news h1 { font-size: 32px; }
+  .rel { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}

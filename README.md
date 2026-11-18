@@ -70,6 +70,16 @@
 
 Then install a Windows game from your Steam library and press Play, in Steam or in Tannin.
 
+## Updating
+
+From version 0.2.0 Tannin updates itself. It checks once a day and always asks before it installs
+anything; **Tannin › Check for Updates…** checks straight away, and the daily check can be turned off
+in Settings. Each update is signed, and Tannin refuses one whose signature does not match.
+
+Tannin can only update itself from the Applications folder. If you open it from somewhere else, such
+as Downloads, it offers to move itself there. What changed in each version is in
+[`CHANGELOG.md`](CHANGELOG.md).
+
 ## What it changes in Steam, and how to undo it
 
 Tannin adds one file to `Steam.app`, changes two lines of its settings and signs Steam again on your
@@ -105,16 +115,22 @@ Nothing is used before its hash has been checked.
 swift build
 swift test
 scripts/bundle.sh        # build/Tannin.app
-scripts/package.sh       # dist/Tannin-<version>.zip, for a release
+scripts/package.sh       # dist/Tannin-<version>.zip
+scripts/release.sh 0.2.0 --dry-run   # everything a release does, short of publishing
 .build/debug/tannin doctor
 ```
+
+A copy you build yourself has no update feed, so it does not check for updates. Releases are made by
+`scripts/release.sh` on the maintainer's Mac, which holds the key that signs them; the tests run on
+GitHub for every push.
 
 Needs Xcode's Swift toolchain (Swift 6.2 or later). The command line tool `tannin` does everything
 the app does.
 
 ## Licence
 
-GPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE), which credits the projects Tannin builds on.
+GPL-3.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE), which credits the projects Tannin builds on,
+including [Sparkle](https://sparkle-project.org), which does the updating.
 
 Tannin is not affiliated with or endorsed by Valve, Apple or CodeWeavers. Steam is a trademark of
 Valve Corporation. Game artwork in the screenshots belongs to its publishers.

@@ -277,3 +277,39 @@ Afterwards `tannin setup` shows Rosetta and Steam done and everything else to do
 Also learned: no game was ever assigned to Tannin's runner in Steam's `config.vdf`, yet LEGO Builder's Journey
 installed and ran. The add-on makes Windows games installable without a per-game compatibility setting, so
 "Install in Steam" does not need to write one.
+
+## 2026-11-18: in-app updates, built but not yet switched on
+
+What exists, and how far each part has been taken. Nothing here has been published and no release was made.
+
+- **Sparkle 2.10.1** is inside the app (`scripts/bundle.sh` embeds the framework as its authors sign it and signs the
+  app last). The app builds, starts and passes `codesign --verify --deep --strict`. **Updating is off**: the public
+  half of the update key is still empty in `bundle.sh`, so the built app has no feed, "Check for Updates…" is
+  disabled and Settings shows only the version. No update has been downloaded or installed by any build yet.
+- **Screens**, as picked on the design canvas: a sidebar row while an update is waiting, an Updates group in
+  Settings, an "Update to Tannin x…" line in the menu bar item, and the Steam-updated notice reporting a quiet check.
+  All were photographed from prepared data by `scripts/snapshots.sh` (42 pictures, light and dark) and compared with
+  the boards. They have never been driven by a real check; the menu bar line was not photographed at all.
+- One sentence differs from the board on purpose. The board says "Tannin 0.2.1 works with the new Steam"; the app
+  says "Tannin 0.2.1 is available", because the feed says a newer Tannin exists, not which Steam builds it supports.
+- **Move to Applications.** The copy, the set-aside of an older copy, the clearing of the download mark and the
+  undo are in `TanninCore` (`AppMove`) with six tests on scratch folders. The question was photographed. **Not
+  tried:** the move from a really downloaded copy that macOS runs from its hidden folder, the lookup of that copy's
+  real place (`SecTranslocateCreateOriginalPathForURL`, found by name at run time), opening the new copy as a second
+  instance, and trashing the copy that was running. The plan is to try exactly that before any release.
+- **A bug found on the way:** the notice row on a game's page squeezed its buttons to slivers a few points wide
+  whenever its text was long. Fixed; it had been that way since the rebuild and no screenshot had shown it.
+- **Website** in `docs/` (landing page, What's New, the notes the update window shows), with one stylesheet, no
+  scripts and no fonts or anything else loaded from other sites. Rendered in Chrome at desktop and phone width, light
+  and dark, and compared with the boards. GitHub Pages is not turned on, so none of it is public as a website.
+  `whats-new.html` and `notes/` are written by `scripts/make-notes.swift` from `CHANGELOG.md`.
+- **`scripts/release.sh`** has only ever been run as `--dry-run`. That run listed the five things a real release
+  would refuse on today (uncommitted work, main not pushed, Pages off, no update key, no certificate), then built and
+  zipped 0.2.0 ad-hoc signed, and wrote the feed, the notes and the Download button into `build/release-dry-run/`.
+  The parts after the typed "yes" (tag, GitHub release, fetching the download back, pushing main, waiting for the
+  live feed) have never run. Neither has signing with the certificate or with the update key.
+- Observed while photographing: on macOS 27 an alert is drawn across two windows (the panel and a glass window
+  behind it), so `screencapture -l` of the alert's own window comes out empty. The picture is taken of that part of
+  the screen instead.
+- Tests: 54 pass here. The tests workflow on GitHub passed on its first run (Swift 6.3 on `macos-26`).
+
