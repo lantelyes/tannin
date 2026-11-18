@@ -111,7 +111,8 @@ public enum SetupPhase: Sendable, Equatable {
         func isDone(_ step: Setup.Step) -> Bool { states[step]?.isDone == true }
         if states.isEmpty {
             self = .checking
-        } else if isDone(.steamPlay) {
+        } else if isDone(.steamPlay), Setup.required.allSatisfy(isDone) {
+            // Steam Play can be on in Steam while Tannin's own files are gone; then there is still work to do.
             self = .done
         } else if steamPlay == .adding {
             self = .addingSteamPlay
@@ -123,6 +124,7 @@ public enum SetupPhase: Sendable, Equatable {
         } else if let failure {
             self = .failed(failure.message, Setup.work(failure.progress))
         } else if Setup.required.allSatisfy(isDone) {
+            // Reaching here, Steam Play is not on yet.
             if case .waiting = states[.steamPlay] {
                 // With everything else in place, the only thing Steam Play waits for is the other tool to go.
                 self = .foreignTool
@@ -140,6 +142,11 @@ public enum SetupPhase: Sendable, Equatable {
             self = .before(needsRosetta: !isDone(.rosetta), bytesLeft: left,
                            fraction: total > 0 ? Setup.downloadShare * Double(total - left) / Double(total) : 0)
         }
+    }
+
+    public var isPaused: Bool {
+        if case .paused = self { return true }
+        return false
     }
 
     /// How many of `count` covers are in colour, as a number that moves smoothly: 2.5 is two covers and half of

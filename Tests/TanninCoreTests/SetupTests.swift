@@ -302,6 +302,11 @@ final class ProgressLog: @unchecked Sendable {
         #expect(phase(done) == .done)
         // Once it is on, an earlier refusal no longer matters.
         #expect(phase(done, steamPlay: .refused) == .done)
+
+        // Steam Play still on in Steam, but Tannin's own files gone: setup starts over and ends without asking again.
+        var emptied = usual
+        emptied[.steamPlay] = .done("On")
+        #expect(phase(emptied) == .before(needsRosetta: false, bytesLeft: Setup.downloadBytes, fraction: 0))
     }
 
     @Test func coversComeIntoColourWithTheDownloadsAndTheLastWithSteamPlay() {

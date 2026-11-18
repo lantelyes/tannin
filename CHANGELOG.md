@@ -17,8 +17,13 @@ has no section here, and the same text becomes the notes shown in the update win
   the disk image, which can also be dropped on it. It says why when a disk image is not accepted.
 - **D3DMetal can be removed.** Games then run on DXMT. Your disk image is not touched.
 - **Steam Play has a page of its own**, with the switch, the update freeze and the Steam bridge.
-- **Setup is five steps.** The Game Porting Toolkit step is gone; nothing in setup needs anything
-  from you until the last step.
+- **A new setup window.** It shows your own Windows games across the top, grey until Steam can
+  install them, and they come into colour as the download goes. One button starts everything; the
+  window stops once, to ask before it adds Steam Play, and ends on Show My Games. The Game Porting
+  Toolkit step is gone. A failed download or a refusal by macOS is said in the window, with what to
+  do about it.
+- Setup now says the true size of what it downloads: about 650 MB. The old figure left out the files
+  from Valve that the Steam bridge needs.
 - When a game asks for Direct3D 12 and stops because D3DMetal is not there, its page says so.
 - Nothing on your Mac moves with this update, and every game keeps the choice it had.
 

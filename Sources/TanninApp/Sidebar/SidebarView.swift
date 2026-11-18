@@ -3,7 +3,9 @@ import TanninCore
 
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("notInstalledExpanded") private var isNotInstalledExpanded = false
+    /// Whether the Not Installed section is open. The setup window opens it when it hands over to this one.
+    static let notInstalledExpandedKey = "notInstalledExpanded"
+    @AppStorage(SidebarView.notInstalledExpandedKey) private var isNotInstalledExpanded = false
 
     private var isSearching: Bool { !model.search.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -17,7 +19,22 @@ struct SidebarView: View {
         let installed = matching(model.library.installed)
         let notInstalled = matching(model.library.notInstalled)
 
-        List(selection: $model.selection) {
+        ScrollViewReader { proxy in
+            list(installed: installed, notInstalled: notInstalled)
+                // The setup window hands over with a game selected far down a long section; bring it into view.
+                .task(id: model.gameToReveal) {
+                    guard let appID = model.gameToReveal else { return }
+                    // The section it is in has only just been opened.
+                    try? await Task.sleep(for: .milliseconds(300))
+                    proxy.scrollTo(appID, anchor: .center)
+                    model.gameToReveal = nil
+                }
+        }
+    }
+
+    private func list(installed: [LibraryGame], notInstalled: [LibraryGame]) -> some View {
+        @Bindable var model = model
+        return List(selection: $model.selection) {
             Section("Windows Games") {
                 ForEach(installed) { game in
                     GameRow(game: game).tag(SidebarSelection.game(game.appID))

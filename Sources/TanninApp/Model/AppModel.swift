@@ -10,8 +10,14 @@ final class AppModel {
     private(set) var library = Library.empty
     private(set) var logLines: [LogLine] = []
     private(set) var setup: [Setup.Step: Setup.State] = [:]
-    /// The setup step that is downloading or paused, if any.
+    /// The setup step that is running or paused, if any.
     private(set) var setupProgress: SetupProgress?
+    /// The setup step that stopped, shown in the setup window where its progress was.
+    private(set) var setupFailure: SetupFailure?
+    /// How adding Steam Play from the setup window is going.
+    private(set) var steamPlayAdd = SteamPlayAdd.idle
+    /// The covers across the top of the setup window: the most played Windows games, the first in the middle.
+    private(set) var setupCovers: [LibraryGame] = []
     /// What an earlier Tannin installed that this one would bring up to date.
     private(set) var upkeep: [Upkeep.Item] = []
     private(set) var upkeepProgress: UpkeepProgress?
@@ -46,6 +52,8 @@ final class AppModel {
     var isShowingErrorInMain = false
     var isShowingErrorInSetup = false
     var selection: SidebarSelection?
+    /// A game the sidebar should scroll to once, because something other than a click selected it.
+    var gameToReveal: String?
     var search = ""
     var isShowingSteamPlaySheet = false
     /// The Add D3DMetal sheet, opened from the Engines & Renderers page or from a game's Renderer pop-up.
@@ -57,8 +65,11 @@ final class AppModel {
 
     /// Decided once, before any window opens: whether the app starts in its setup window.
     let needsSetupAtLaunch: Bool
+    /// Whether the setup window's corner button quits the app: true on a first run, when there is no main
+    /// window to go back to.
+    private(set) var setupIsFirstRun: Bool
 
-    private let paths = Paths.live
+    private let paths = Paths.app
     private var libraryFingerprint: String?
     private var cancellation: Cancellation?
     /// Set while showing made-up data for screenshots, so nothing replaces it.
@@ -67,6 +78,7 @@ final class AppModel {
     init() {
         let isTakingScreenshots = Snapshotter.outputFolder != nil
         needsSetupAtLaunch = !isTakingScreenshots && !Setup(paths: paths).isReadyForSteamPlay
+        setupIsFirstRun = needsSetupAtLaunch
         // The model lives as long as the app, and every window and the menu bar read from it,
         // so it keeps itself up to date rather than relying on one window being open.
         if !isTakingScreenshots {
@@ -84,6 +96,21 @@ final class AppModel {
     /// True once a second engine is installed, which is when a game can be given a Wine version of its own.
     var hasSeveralEngines: Bool { engines.count(where: \.isInstalled) > 1 }
     var problem: SteamPlayProblem? { status.flatMap(SteamPlayProblem.init) }
+
+    /// The one moment the setup window is in.
+    var setupPhase: SetupPhase {
+        SetupPhase(states: setup, progress: setupProgress, failure: setupFailure, steamPlay: steamPlayAdd)
+    }
+
+    /// How many covers the setup window shows, and the fewest it shows at all.
+    static let setupCoverCount = 7
+    static let fewestSetupCovers = 5
+
+    private func chooseSetupCovers() {
+        let ranked = library.showcase(count: Self.setupCoverCount)
+        let row = ranked.count >= Self.fewestSetupCovers ? Library.centred(ranked) : []
+        if setupCovers != row { setupCovers = row }
+    }
 
     func canPlay(_ game: LibraryGame) -> Bool {
         game.install == .installed && status != nil && problem == nil
@@ -167,7 +194,10 @@ final class AppModel {
         if status != snapshot.status { status = snapshot.status }
         if let fresh = snapshot.library {
             libraryFingerprint = snapshot.fingerprint
-            if library != fresh { library = fresh }
+            if library != fresh {
+                library = fresh
+                chooseSetupCovers()
+            }
         }
         if logLines != snapshot.logLines { logLines = snapshot.logLines }
         let states = Dictionary(uniqueKeysWithValues: snapshot.setup.map { ($0.step, $0.state) })
@@ -206,9 +236,13 @@ final class AppModel {
         isShowingFixture = true
         status = fixture.status
         library = fixture.library
+        chooseSetupCovers()
         logLines = fixture.logLines
         setup = fixture.setup
         setupProgress = fixture.setupProgress
+        setupFailure = fixture.setupFailure
+        steamPlayAdd = fixture.steamPlayAdd
+        setupIsFirstRun = fixture.isFirstRun
         selection = fixture.selection
         isShowingSteamPlaySheet = fixture.isShowingSteamPlaySheet
         isShowingD3DMetalSheet = fixture.d3dMetalAdd != nil
@@ -235,6 +269,9 @@ final class AppModel {
         isShowingFixture = false
         libraryFingerprint = nil
         setupProgress = nil
+        setupFailure = nil
+        steamPlayAdd = .idle
+        setupIsFirstRun = needsSetupAtLaunch
         isShowingSteamPlaySheet = false
         isShowingD3DMetalSheet = false
         d3dMetalAdd = .idle
@@ -283,6 +320,28 @@ final class AppModel {
         await perform("Adding Steam Play to Steam") {
             try SteamAddon(paths: paths).enable()
             try? SteamLauncher(paths: paths).openSteam()
+        }
+    }
+
+    /// The same step from the setup window, where a refusal or a failure is shown in the window, not in an alert.
+    func addSteamPlayFromSetup() async {
+        guard !isBusy else { return }
+        let paths = paths
+        activity = "Adding Steam Play to Steam"
+        steamPlayAdd = .adding
+        do {
+            try await Task.detached {
+                try SteamAddon(paths: paths).enable()
+                try? SteamLauncher(paths: paths).openSteam()
+            }.value
+            activity = nil
+            // What is on the Mac is read first, so the window goes from "adding" straight to its last screen.
+            await refresh()
+            steamPlayAdd = .idle
+        } catch {
+            activity = nil
+            await refresh()
+            steamPlayAdd = SteamPlayAdd(error)
         }
     }
 
@@ -532,14 +591,13 @@ final class AppModel {
 
     // MARK: Setup
 
-    /// Runs the setup steps that download things, one after the other: Rosetta, the engine, then the bridge.
-    /// Stops at the first one that fails or is paused.
-    func runDownloads(startingWith first: Setup.Step) async {
-        let order: [Setup.Step] = [.rosetta, .engine, .bridge]
-        guard let start = order.firstIndex(of: first) else { return }
-        for step in order[start...] {
-            // Rosetta is only installed when asked for directly; the engine carries on into the bridge.
-            if step != first, step == .rosetta { continue }
+    /// Does everything Tannin can do without asking: Rosetta if it is missing, the engine, then the bridge.
+    /// Stops at the first step that fails or is paused; calling it again carries on from there, which is what
+    /// Set Up, Resume and Try Again all do.
+    func runSetup() async {
+        guard !isBusy else { return }
+        setupFailure = nil
+        for step in [Setup.Step.rosetta, .engine, .bridge] {
             if setup[step]?.isDone == true { continue }
             guard await run(step) else { return }
         }
@@ -572,8 +630,8 @@ final class AppModel {
         } catch is Cancelled {
             setupProgress?.isPaused = true
         } catch {
+            setupFailure = SetupFailure(error, during: setupProgress ?? SetupProgress(step: step))
             setupProgress = nil
-            fail(error)
         }
         self.cancellation = nil
         await refresh()
@@ -588,5 +646,19 @@ final class AppModel {
 
     func pauseDownloads() {
         cancellation?.cancel()
+    }
+
+    /// Where the main window starts once setup is finished: on a game with an Install button. With nothing
+    /// installed yet that is the most played game, in the sidebar's Not Installed section, which is opened for it.
+    func showMyGames() {
+        search = ""
+        if let installed = library.installed.first {
+            if case .game = selection { return }
+            selection = .game(installed.appID)
+        } else if let game = library.showcase(count: 1).first ?? library.notInstalled.first {
+            UserDefaults.standard.set(true, forKey: SidebarView.notInstalledExpandedKey)
+            selection = .game(game.appID)
+            gameToReveal = game.appID
+        }
     }
 }
