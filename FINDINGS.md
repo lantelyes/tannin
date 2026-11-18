@@ -385,3 +385,80 @@ their feed from `http://localhost:8765/`, served from a scratch folder on this M
   published zip, and the move has never replaced a copy that was already in Applications. Still open as before:
   whether the permission to change Steam survives an update, and anything on a second Mac.
 
+
+## 2026-11-18: graphics layers, tested outside Steam's own window (plan "Graphics layers per game…", Phase 1)
+
+Setup first, from the published 0.2.1 and its own buttons: Wine engine, the toolkit disk image chosen through the
+file panel, Steam bridge, Add Steam Play. All six steps finished; the add-on loaded (`notproton.log`). macOS showed
+no permission prompt this time. The update freeze was turned on before Steam first opened; Steam stayed on
+1794536281.
+
+**Computer use cannot operate Steam.** Steam's windows belong to "Steam Helper", which the tool hides, refuses
+clicks on, and will not accept by name. Keys go to whichever allowed app it brings forward instead. Steam's dialogs
+can be opened (`steam://install/<id>`) and its window captured from the terminal (`screencapture -l <id>`), but a
+click inside Steam has to be the user's.
+
+The tests below use a small probe (`probe.c`, mingw, 64-bit and 32-bit builds) that creates a device with each
+Direct3D version and reports the adapter and which DLLs answered, builtin or native. It was run on the runner
+directly, and through the add-on's own launch script run by hand with a scratch `STEAM_COMPAT_DATA_PATH`.
+
+What answers today (runner with D3DMetal 4.0b3 linked):
+
+| | 64-bit | 32-bit |
+|---|---|---|
+| Direct3D 9 | Wine's own (wined3d), device created | Wine's own, device created |
+| Direct3D 10 | **fails** (D3DMetal's `d3d10.dll` answers and returns `E_FAIL`) | **fails** (Wine's own, `E_FAIL`) |
+| Direct3D 11 | D3DMetal, feature level 11_0 | Wine's own over Vulkan, feature level 9_3 only |
+| Direct3D 12 | D3DMetal | Wine's vkd3d over Vulkan creates a device |
+
+Without the toolkit (the engine as shipped): Direct3D 11 is the 9_3 fallback in both bit widths and Direct3D 10
+fails. So a runner without D3DMetal is not usable for Direct3D 10/11 unless DXMT is put into it.
+
+- **DXMT 0.80 works, both bit widths, Direct3D 10 and 11** (feature level 11_0, adapter "Apple M2 Max"). Shown three
+  ways: its files in a Windows environment with `WINEDLLOVERRIDES=d3d11,dxgi,d3d10core=n`; overlaid into the
+  runner's `lib/wine` as builtins; and as an add-on runner variant (below). The engine ships DXMT's three files
+  with the 16-byte "Wine builtin DLL" mark at offset 0x40 removed, so they load as natives; writing the mark back
+  makes them load from `lib/wine`. 64-bit Direct3D 10 also needs Wine's own `d3d10.dll` back in place of
+  D3DMetal's.
+- **Routing by bit width works with no knowledge of the game.** With DXMT's files only in `syswow64` and
+  `d3d11,dxgi,d3d10core=n,b`, a 64-bit program got D3DMetal and a 32-bit one got DXMT. The same split falls out of
+  putting DXMT's builtins only into the runner's `i386-windows`.
+- **D3DMetal and DXMT cannot be mixed in one process.** DXMT's `dxgi` with D3DMetal's `d3d12` crashed the probe.
+  So a 64-bit game on DXMT has no Direct3D 12, and a 64-bit Direct3D 10 game cannot be served while D3DMetal holds
+  `dxgi`: it needs DXMT chosen for that game.
+- **DXVK here has no Direct3D 9.** The engine's DXVK (Gcenx's macOS build of 1.10.3) holds only `d3d10core` and
+  `d3d11` (plus `dxgi` for 32-bit). The original DXVK 1.10.3's `d3d9.dll` loads but `CreateDevice` fails on
+  MoltenVK 1.4.2 (`D3DERR_NOTAVAILABLE`, "DxvkAdapter: Failed to create device"). So Direct3D 9 has only Wine's own
+  layer on this stack, and what was said in the interview ("DXVK is the only layer for Direct3D 9") was wrong.
+- DXVK's Direct3D 11 works for a 64-bit program on a runner without D3DMetal (feature level 11_0). Its Direct3D 10
+  failed (`0x887a0004`) and the 32-bit probe died without output. On a runner with D3DMetal's `dxgi` it creates a
+  device but reports D3DMetal's adapter, a mix not to rely on.
+- **The add-on already has the per-game mechanism.** NotProton 1.2.6's launch script reads descriptors from
+  `notproton/variants/*.conf` (`[id]`, `label`, `src`, `dst`, `build`, `remove`). The launch option
+  `NOTPROTON_RUNNER_VARIANT=<id>` makes it clone the runner, lay the `src` tree over `dst`, register new module
+  names in the game's environment and start the game from the clone. A descriptor that replaces Wine's own files
+  must name the build (`build = tannin-1`), and one that touches `ntdll` or `lsteamclient` is refused. Tried with a
+  test descriptor holding DXMT's builtins: the script built `crossover-tannin-1+tannin-dxmt@813855acbd8f`, the
+  probe got DXMT for Direct3D 10 and 11 in both bit widths, and without the option it went back to the base
+  runner. The run log names the variant used ("runner: variant asked for tannin-dxmt, using tannin-dxmt").
+  This needs no file in the game's environment beforehand, no Tannin at launch, and works for a game never started.
+- The script also has plugins (`notproton/plugins/*.conf`, switched by `NOTPROTON_<NAME>=…`: environment
+  variables, DLL overrides, files staged into `system32`) and shows both in its own panel on Steam's
+  Compatibility page.
+- Which variables reach the game from launch options: names starting `D3DM_`, `DXMT_`, `DXVK_`, `MTL_`,
+  `ROSETTA_`, `CX_GRAPHICS`, and anything written as `NOTPROTON_ENV_<NAME>=value`. `WINEDLLOVERRIDES` is kept and
+  merged. A user's `WINEDLLPATH` is appended after the runner's folders, so it cannot replace a builtin.
+  `CX_GRAPHICS_BACKEND` is passed through but this free engine does not read it.
+- **Moving between engine builds is already handled by the add-on:** a Windows environment from another build
+  "runs as is, in either direction", Wine re-runs its setup, and if the game then crashes in its first minute the
+  add-on offers to rebuild the environment keeping saves.
+
+**Wine 11.17.** `dappermint/winecx-gptk` `runtime-v4.7.3` matched its hash (`a4b5d634…d331`, 461,131,598 bytes) and
+reports `wine-11.17`; it carries the same DXMT 0.80 and DXVK 1.10.3. NotProton's tools found the hook in its
+64-bit ntdll (clean `8b32c9f6…4128`, hook RVA `0x52de3`, detour 832 bytes at `0x83360`, patched `4573d521…ef5a`,
+723 bytes differ, the patched file re-resolves as `jmp 0x83360`). The detour built here is byte-identical to the
+one Bridgeplay publishes for this engine (`e1bbd185…e736`) and the patched hash equals Bridgeplay's. Static check
+only; no game has been started on it here.
+
+**Not done yet:** any real game. The three test games are not installed (each needs one click in Steam), so
+nothing above has rendered a frame, and frame cap, overlay and the DXMT and DXVK switches are untried.
