@@ -9,10 +9,17 @@ checks each against a pinned SHA-256, and redistributes none of it:
 - NotProton (https://github.com/NotProtonNot/NotProton), GPL-3.0.
   The Steam add-on, the Steam bridge (a port of Valve's Proton lsteamclient, which is
   under the Steamworks SDK license, and steam-helper, BSD-3-Clause), signatures and helpers.
-  Files under Tools/ntdll-patch/ are taken from NotProton and remain under its license.
+  Files under Tools/ntdll-patch/ are taken from NotProton and remain under its license;
+  one of them, shim32.S, carries a two-line correction of Tannin's (see UPSTREAM.md there).
+  The per-game graphics layers use the add-on's own runner variants and plugins.
 
 - winecx-gptk (https://github.com/frankea/winecx-gptk, from https://github.com/dappermint/winecx-gptk).
   A build of Wine from CodeWeavers' published CrossOver sources. Wine is LGPL-2.1-or-later.
+  The same download carries the graphics layers Tannin offers beside Apple's:
+  DXMT (https://github.com/3Shain/dxmt), zlib license;
+  DXVK (https://github.com/doitsujin/dxvk, in Gcenx's macOS build), zlib license;
+  MoltenVK (https://github.com/KhronosGroup/MoltenVK), Apache-2.0.
+  Tannin changes none of them. It marks DXMT's three files so that Wine loads them from its own folders.
 
 - Steam client files, from Valve's own download servers. Copyright Valve Corporation.
 

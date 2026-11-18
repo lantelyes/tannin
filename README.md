@@ -6,7 +6,7 @@
 
 <p align="center">
   Install and play Windows games from the Steam you already have on your Mac.<br>
-  Free, on a free Wine engine and Apple's own graphics translator.
+  Free, on a free Wine engine, with a choice of graphics layers.
 </p>
 
 <p align="center">
@@ -17,8 +17,8 @@
 </p>
 
 > [!WARNING]
-> **Early test build.** One game has been run end to end on one Mac. Expect rough edges, and please
-> report what you find. [`FINDINGS.md`](FINDINGS.md) is an honest log of what has and has not been
+> **Early test build.** Three games have been tried on one Mac, and two of them start. Expect rough
+> edges, and please report what you find. [`FINDINGS.md`](FINDINGS.md) is an honest log of what has and has not been
 > shown to work.
 
 ## What it does
@@ -26,10 +26,13 @@
 - **Windows games show up as installable in Steam for Mac.** You press Install and Play in Steam as
   you would for a Mac game. No second Steam, no separate launcher to keep signed in.
 - **A Mac app looks after the rest.** Tannin sets everything up, lists your Windows games, and gives
-  each one its own settings: ray tracing, MetalFX upscaling, a frame cap and a performance overlay.
-- **Free all the way down.** A Wine engine built from CodeWeavers' published sources, Apple's D3DMetal
-  from your own copy of the Game Porting Toolkit, and the open-source NotProton Steam bridge. CrossOver
-  is never used.
+  each one its own settings: which graphics layer it uses, a frame cap, a performance overlay, and the
+  settings that belong to that layer.
+- **Three graphics layers.** Apple's D3DMetal, DXMT and DXVK. A game starts on Automatic and can be
+  given another on its page.
+- **Free all the way down.** A Wine engine built from CodeWeavers' published sources, the open-source
+  NotProton Steam bridge and, if you want it, Apple's D3DMetal from your own copy of the Game Porting
+  Toolkit. CrossOver is never used.
 - **It can be undone.** One button puts Steam back exactly as Valve ships it.
 
 ## A look around
@@ -45,17 +48,18 @@
 
 | Engine | Logs |
 |:---:|:---:|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/engine-dark.png"><img src="docs/screenshots/engine-light.png" width="400" alt="The Engine page: Steam Play, the Wine engine, D3DMetal and the Steam bridge"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/logs-dark.png"><img src="docs/screenshots/logs-light.png" width="400" alt="The Logs page: a table of what the Steam add-on did, with a button to copy details for a bug report"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/engine-dark.png"><img src="docs/screenshots/engine-light.png" width="400" alt="The Engine page: Steam Play, the Wine engine, the three graphics layers and the Steam bridge"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/logs-dark.png"><img src="docs/screenshots/logs-light.png" width="400" alt="The Logs page: a table of what the Steam add-on did, with a button to copy details for a bug report"></picture> |
 | What is installed, at which version, and the button that removes Steam Play again. | What the Steam add-on did, with one button that copies everything a bug report needs. |
 
 ## What you need
 
 - A Mac with Apple silicon, on **macOS 26 or later**.
 - **Steam for Mac**, in your Applications folder, signed in at least once.
-- Apple's **Game Porting Toolkit** disk image. It is free with an Apple account:
+- About 2 GB of free disk space, before any games.
+- Optional: Apple's **Game Porting Toolkit** disk image, for games that use Direct3D 12. It is free
+  with an Apple account:
   [download it from Apple](https://developer.apple.com/download/all/?q=game%20porting%20toolkit)
   ("Evaluation environment for Windows games", 4.0 beta 3 or newer). Tannin never includes it.
-- About 2 GB of free disk space, before any games.
 
 ## Install
 
@@ -64,9 +68,11 @@
 3. macOS will say it could not verify Tannin, because this build is not signed with an Apple developer
    certificate. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**.
    You only do this once.
-4. Follow **Set Up Tannin**. It downloads the Wine engine and the Steam bridge (about 550 MB), asks
-   for the Game Porting Toolkit disk image, and last of all asks before it adds Steam Play to Steam.
-   When macOS asks whether Tannin may change other apps, allow it.
+4. Follow **Set Up Tannin**. It downloads the Wine engine and the Steam bridge (about 550 MB) and last
+   of all asks before it adds Steam Play to Steam. When macOS asks whether Tannin may change other
+   apps, allow it.
+5. Optional: add Apple's Game Porting Toolkit, in setup or later on the Engine page. Games that use
+   Direct3D 12 need it.
 
 Then install a Windows game from your Steam library and press Play, in Steam or in Tannin.
 
@@ -80,6 +86,22 @@ Tannin can only update itself from the Applications folder. If you open it from 
 as Downloads, it offers to move itself there. What changed in each version is in
 [`CHANGELOG.md`](CHANGELOG.md).
 
+When an update brings something for what Tannin installed earlier, a **Finish Updating** row appears in
+the sidebar. It leads to the Engine page, where each thing has its own button; nothing is downloaded
+and Steam is not touched until you press one.
+
+## Graphics layers
+
+| Layer | Covers | Where it comes from |
+|---|---|---|
+| D3DMetal | Direct3D 11 and 12, 64-bit games | Apple's Game Porting Toolkit, from your own download |
+| DXMT | Direct3D 10 and 11, 32-bit and 64-bit games | Inside the Wine engine |
+| DXVK | Direct3D 11 through Vulkan, 64-bit games | Inside the Wine engine |
+
+A game starts on **Automatic**: D3DMetal for a 64-bit game when the toolkit has been added, DXMT
+otherwise. Direct3D 9 games stay on Wine's own layer. The choice is kept in the game's Steam launch
+options, so it holds with Tannin closed; anything you typed there yourself is left alone.
+
 ## What it changes in Steam, and how to undo it
 
 Tannin adds one file to `Steam.app`, changes two lines of its settings and signs Steam again on your
@@ -91,7 +113,10 @@ signed by Valve, and Tannin checks that signature first. Your games, saves and a
 
 ## Known limits
 
-- **32-bit games** start, but have no Steam overlay, achievements or cloud saves.
+- **Direct3D 12** games need Apple's Game Porting Toolkit.
+- **Direct3D 9** games run on Wine's own, slower graphics layer, and some old games fail to start.
+- **32-bit games** now reach Steam. Their Steam overlay, achievements and cloud saves have not been
+  checked yet.
 - **Steam updates.** When Steam moves to a build the Steam bridge does not know yet, Steam Play stays
   off until Tannin catches up. Tannin tells you when that has happened. Mac games are not affected.
 - **Permissions after an update.** Because this build is only signed locally, macOS may ask for its
@@ -104,7 +129,8 @@ signed by Valve, and Tannin checks that signature first. Your games, saves and a
 |---|---|---|
 | Steam add-on and Steam bridge | [NotProton](https://github.com/NotProtonNot/NotProton) 1.2.6 | Downloaded, SHA-256 pinned |
 | Wine engine | [winecx-gptk](https://github.com/frankea/winecx-gptk) 4.8.3 (Wine 11.19, CrossOver 26.3 sources) | Downloaded, SHA-256 pinned |
-| D3DMetal | Apple Game Porting Toolkit 4 | You download it from Apple; Tannin imports it and checks Apple's signature |
+| D3DMetal (optional) | Apple Game Porting Toolkit 4 | You download it from Apple; Tannin imports it and checks Apple's signature |
+| DXMT 0.80, DXVK 1.10.3 | [DXMT](https://github.com/3Shain/dxmt), [DXVK](https://github.com/doitsujin/dxvk) | Part of the Wine engine download |
 | Steam client files | Valve | Downloaded from Valve's servers, SHA-256 pinned |
 
 Nothing is used before its hash has been checked.
@@ -116,7 +142,7 @@ swift build
 swift test
 scripts/bundle.sh        # build/Tannin.app
 scripts/package.sh       # dist/Tannin-<version>.zip
-scripts/release.sh 0.2.0 --dry-run   # everything a release does, short of publishing
+scripts/release.sh 0.3.0 --dry-run   # everything a release does, short of publishing
 .build/debug/tannin doctor
 ```
 

@@ -28,7 +28,10 @@ struct GamePage: View {
 
     /// The layer the game really gets: the chosen one, or what Automatic comes to. Nil when that is not known yet.
     private var effectiveLayer: GraphicsLayer? {
-        draft.layer == .automatic ? GraphicsLayer.automaticChoice(is32Bit: is32Bit, toolkitAdded: toolkitAdded) : draft.layer
+        guard draft.layer == .automatic else { return draft.layer }
+        // A Direct3D 9 game stays on Wine's own layer, which has none of the layers' settings.
+        if game.isInstalled, model.layerUsage[game.appID] == .wineOwn { return nil }
+        return GraphicsLayer.automaticChoice(is32Bit: is32Bit, toolkitAdded: toolkitAdded)
     }
 
     var body: some View {

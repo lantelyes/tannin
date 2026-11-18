@@ -478,3 +478,78 @@ nothing above has rendered a frame, and frame cap, overlay and the DXMT and DXVK
 - Switching away from DXVK is clean: with the options removed, the same environment gave D3DMetal again, and DXMT
   with the DXMT variant, although DXVK's two files were still in `system32`. Without the override they are not
   used.
+
+## 2026-11-18: real games on each layer, the 32-bit Steam bridge, and the build of 0.3.0
+
+The three test games finished installing and were started from Steam (`steam://rungameid/<id>`), with launch
+options written by `tannin game set`. Windows were captured with `screencapture -l`; `WINEDEBUG=+loaddll` was
+added to each game's launch options so the log lists which libraries answered. This Mac: M2 Max, macOS 27.2,
+Steam 1794536281, Wine 11.19, D3DMetal 4.0b3, DXMT 0.80, DXVK 1.10.3.
+
+| Game | Layer | Result |
+|---|---|---|
+| LEGO Builder's Journey (64-bit) | Automatic, which is D3DMetal | Draws its title screen. |
+| | D3DMetal by name, overlay on, cap 30 | Draws. The overlay reads "Game Porting Toolkit 4.0b3", "D3D11" and 30.00 fps. |
+| | DXMT | Draws, but slowly here: about 10 fps on the title screen. |
+| | DXMT, Upscaling 2× | Draws. The overlay reads "MetalFX … Scaling Input Res 1512x982, Target Res 3024x1964, Spatial". |
+| | DXVK | Draws. The log reads "DXVK: v1.10.3-20230507-async" and, with background preparing on, "Using 7 async compiler threads". |
+| | Automatic with D3DMetal taken out of the runner | Draws on DXMT. |
+| Just Cause 2 (32-bit, Direct3D 10) | Automatic, which is DXMT | Plays its opening logos, after the fix below. Not played further. |
+| Silent Hunter III (32-bit, Direct3D 9) | Automatic | Starts through Steam on Wine's own layer, then shows its own box "Can not initialize 3D engine". |
+
+What this showed, and what was changed because of it:
+
+- **A Direct3D 12 game crashed on DXMT at first.** LEGO Builder's Journey tries Direct3D 12 before 11. In the DXMT
+  copy of the runner Apple's `d3d12.dll` was still there beside DXMT's `dxgi`, and the game died with a page fault.
+  The DXMT descriptor now removes `d3d12.dll` and `d3d12core.dll` from that copy; the game's attempt then fails
+  cleanly and it goes on to Direct3D 11. Without the toolkit nothing has to be removed: Wine's own `d3d12`
+  beside DXMT failed cleanly by itself and the game fell back the same way.
+- **32-bit games that need Steam did not start at all.** Both 32-bit games quit at once with `tier0_s.dll … needed
+  by steamclient.dll not found`: without the 32-bit ntdll detour the game loads Valve's 32-bit `steamclient.dll`
+  as it is, and that file cannot load here. The detour had been left out on 2026-11-17 because it crashed every
+  32-bit program. **The real cause was one instruction.** NotProton's `shim32.S` runs `mov ebx, ebp` and then
+  `mov esi, WM_REG`; on this engine the resolver finds `wm` in `ebx`, so the detour was handed the frame pointer
+  and crashed at its first read (0xb2 into the detour, in `basename_is`). The earlier guess about a fixed load
+  address was wrong: the shim already allows for the load address. Tannin's copy reads `WM_REG` first. With the
+  rebuilt detour (`e22e92de…de4c`, patched i386 ntdll `5d515cf4…212e`): a fresh `wineboot` has no access
+  violation and no Mono error, the 32-bit probe gets DXMT at feature level 11_0, and both games get past Steam
+  (`steamclient.dll` and the 32-bit `lsteamclient.dll` load). `Runner.patchedArchitectures` is both again.
+  Not checked for 32-bit games: the Steam overlay, achievements, cloud saves.
+- **Silent Hunter III's failure is its own.** The log has `NtUserChangeDisplaySettings … returned -2`: the game
+  asks for a screen mode this display does not offer. Not a layer matter and not looked into further.
+- **Steam's install scripts run through the bridge.** For both 32-bit games Steam ran `iscriptevaluator.exe` with
+  the game's `installscript.vdf` before the first start (Just Cause 2's runs `vcredist_x86.exe /q:a` and
+  `DXSETUP.exe /silent`); it exited 0 after about two and a half minutes. Wine also carries its own versions of the
+  usual runtime libraries: the game's Windows folder holds `msvcr80` to `msvcr120`, `vcruntime140`, `d3dx9_*`,
+  `d3dx10_*`, `d3dx11_*`, `xinput1_3`, `xaudio2_7`, and Just Cause 2 loaded Wine's `msvcr80`, `d3dx10_42` and
+  `d3dcompiler_47`. .NET is Wine Mono. Nothing was added by Tannin. Not tried: a game that needs Microsoft's own
+  .NET Framework or an installer Wine cannot run.
+- **Frame cap.** On D3DMetal it holds exactly (30.00 with a cap of 30). On DXMT the setting arrives (`Found config
+  env: d3d11.preferredMaxFrameRate=30`) but neither game gave a clean number: LEGO never reached 30 on DXMT and
+  Just Cause 2's logo screen sat at about 20. On DXVK the variable is written and was not measured.
+- **DXMT's upscaling is not what the board said.** It does not draw the game smaller. The game draws at the size it
+  chose and DXMT enlarges that picture with MetalFX (1512×982 to 3024×1964 at 2×). The row's caption now says
+  so, and "Best speed" is not offered on DXMT, since nothing there buys speed.
+- **Which layer ran.** DXMT and DXVK each write lines of their own into the game's Wine log (`info:  Using feature
+  level …`, `info:  DXVK: v…`), with no extra tracing. D3DMetal writes none; it is named only for a 64-bit game on
+  the plain runner whose log has Apple's upscaler line (`com.apple.appleneuralengine`), which the DXMT and DXVK
+  runs did not have. Direct3D 9 on Wine's own layer cannot be told from the log unless the user has `+loaddll`
+  on. When nothing is certain the app says only what Automatic will use.
+- A game window that opens behind Steam's window just after Steam restarts can stay black until it is in front
+  (seen with DXVK). The same options drew normally on the next start.
+- Computer use still cannot click in Steam. Steam's "Select launch option" box for LEGO needed one click from the
+  user (with "Always use this option").
+
+Built on this (commit `88c7298`): the layer files and descriptors (`LayerStore`), DXMT inside the runner, per-layer
+launch options, the skippable toolkit step, `installed.json`, the after-update step (`Upkeep`), and the screens.
+76 tests pass. Every new screen state is photographed by `scripts/snapshots.sh` and was compared with the
+"Decided" boards.
+
+Differences from the boards, all from what the games showed:
+- The Upscaling caption (above), and no "Best speed" on DXMT.
+- The 32-bit notice on a game's page is gone, and the Steam Bridge row says "Lets games talk to Steam".
+- The after-update row also mentions the Steam bridge for 32-bit games, because the same step adds it.
+- "It ran on D3DMetal last time" appears only when the log supports it; a Direct3D 9 game is rarely recognised.
+
+**Not done yet:** playing any of the games past its first screen; a 32-bit Direct3D 11 game; the overlay,
+achievements and cloud saves in a 32-bit game; DXVK's frame cap; anything on a second Mac.
