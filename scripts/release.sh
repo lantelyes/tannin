@@ -168,7 +168,9 @@ if [ -n "$dry" ]; then
 fi
 
 printf 'Publish this to GitHub and to everyone who has Tannin? Type yes: '
-read -r answer < /dev/tty
+# Only a person at a terminal can answer. Run from anything else, this counts as "no".
+answer=""
+read -r answer < /dev/tty 2> /dev/null || answer=""
 if [ "$answer" != "yes" ]; then
   git restore CHANGELOG.md docs
   git clean -fdq docs
