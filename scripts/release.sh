@@ -2,9 +2,14 @@
 # Makes a release of Tannin on this Mac: builds and signs it, writes the update feed and the website's
 # notes, and, after a typed "yes", publishes them.
 #
-#   scripts/release.sh <version>             the real thing
-#   scripts/release.sh <version> --dry-run   everything up to the "yes", written into build/release-dry-run/;
-#                                            changes nothing in the repository and publishes nothing
+#   scripts/release.sh <version>                      the real thing; asks for a typed "yes" before publishing
+#   scripts/release.sh <version> --dry-run            everything up to the "yes", written into
+#                                                     build/release-dry-run/; changes nothing in the repository
+#                                                     and publishes nothing
+#   scripts/release.sh <version> --confirm <version>  the real thing with the "yes" given beforehand, by writing
+#                                                     the version a second time. For a release the owner has
+#                                                     asked for in so many words while away from this Mac.
+#                                                     Every check below still applies.
 #
 # A real release refuses to start unless everything it depends on is in place. A dry run lists the same
 # refusals and carries on, so the rest can still be looked at.
@@ -16,7 +21,16 @@ cd "$(dirname "$0")/.."
 
 version="${1:?usage: release.sh <version> [--dry-run]}"
 dry=""
-[ "${2:-}" = "--dry-run" ] && dry=1
+confirmed=""
+case "${2:-}" in
+  "") ;;
+  --dry-run) dry=1 ;;
+  --confirm)
+    # The version has to be written out again, so that this cannot be a leftover from another release.
+    [ "${3:-}" = "$version" ] || { echo "--confirm has to repeat the version: --confirm $version"; exit 2; }
+    confirmed=1 ;;
+  *) echo "usage: release.sh <version> [--dry-run | --confirm <version>]"; exit 2 ;;
+esac
 
 repo="lantelyes/tannin"
 site="https://lantelyes.github.io/tannin"
@@ -167,10 +181,15 @@ if [ -n "$dry" ]; then
   exit 0
 fi
 
-printf 'Publish this to GitHub and to everyone who has Tannin? Type yes: '
-# Only a person at a terminal can answer. Run from anything else, this counts as "no".
-answer=""
-read -r answer < /dev/tty 2> /dev/null || answer=""
+if [ -n "$confirmed" ]; then
+  echo "Publishing without asking again: --confirm $version was given."
+  answer="yes"
+else
+  printf 'Publish this to GitHub and to everyone who has Tannin? Type yes: '
+  # Only a person at a terminal can answer. Run from anything else, this counts as "no".
+  answer=""
+  read -r answer < /dev/tty 2> /dev/null || answer=""
+fi
 if [ "$answer" != "yes" ]; then
   git restore CHANGELOG.md docs
   git clean -fdq docs

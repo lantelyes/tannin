@@ -159,7 +159,8 @@ scripts/release.sh 0.4.0 --dry-run   # everything a release does, short of publi
 
 A copy you build yourself has no update feed, so it does not check for updates. Releases are made by
 `scripts/release.sh` on the maintainer's Mac, which holds the key that signs them; the tests run on
-GitHub for every push.
+GitHub for every push. The script publishes only after a typed "yes", or when the version is written a
+second time (`--confirm <version>`).
 
 Needs Xcode's Swift toolchain (Swift 6.2 or later). The command line tool `tannin` does everything
 the app does.
