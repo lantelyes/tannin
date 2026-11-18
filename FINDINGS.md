@@ -490,7 +490,7 @@ Steam 1794536281, Wine 11.19, D3DMetal 4.0b3, DXMT 0.80, DXVK 1.10.3.
 |---|---|---|
 | LEGO Builder's Journey (64-bit) | Automatic, which is D3DMetal | Draws its title screen. |
 | | D3DMetal by name, overlay on, cap 30 | Draws. The overlay reads "Game Porting Toolkit 4.0b3", "D3D11" and 30.00 fps. |
-| | DXMT | Draws, but slowly here: about 10 fps on the title screen. |
+| | DXMT | Draws. About 10 fps on the title screen with no cap (see the note on speed below). |
 | | DXMT, Upscaling 2× | Draws. The overlay reads "MetalFX … Scaling Input Res 1512x982, Target Res 3024x1964, Spatial". |
 | | DXVK | Draws. The log reads "DXVK: v1.10.3-20230507-async" and, with background preparing on, "Using 7 async compiler threads". |
 | | Automatic with D3DMetal taken out of the runner | Draws on DXMT. |
@@ -527,6 +527,10 @@ What this showed, and what was changed because of it:
 - **Frame cap.** On D3DMetal it holds exactly (30.00 with a cap of 30). On DXMT the setting arrives (`Found config
   env: d3d11.preferredMaxFrameRate=30`) but neither game gave a clean number: LEGO never reached 30 on DXMT and
   Just Cause 2's logo screen sat at about 20. On DXVK the variable is written and was not measured.
+- **No speed comparison between the layers can be read from these runs.** With no cap the title screen showed
+  about 10 fps on DXMT, and later the same on D3DMetal (on Wine 11.17), while D3DMetal with a cap of 30 held 30.00.
+  The game's window was behind Steam's in every run, which may be what held it back. A fair comparison needs the
+  game in front and the same scene on each layer.
 - **DXMT's upscaling is not what the board said.** It does not draw the game smaller. The game draws at the size it
   chose and DXMT enlarges that picture with MetalFX (1512×982 to 3024×1964 at 2×). The row's caption now says
   so, and "Best speed" is not offered on DXMT, since nothing there buys speed.
