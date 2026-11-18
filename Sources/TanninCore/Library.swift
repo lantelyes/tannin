@@ -19,9 +19,11 @@ public struct LibraryGame: Sendable, Hashable, Identifiable {
     public let art: GameArt
     /// The game's own folder, once it is installed.
     public let installFolder: URL?
+    /// How long this Steam account has played it, in minutes. Zero when never, or when Steam does not say.
+    public let minutesPlayed: Int
 
     public init(appID: String, name: String, install: Install, sizeOnDisk: Int64? = nil, launchOptions: String = "",
-                is32Bit: Bool? = nil, art: GameArt = .none, installFolder: URL? = nil) {
+                is32Bit: Bool? = nil, art: GameArt = .none, installFolder: URL? = nil, minutesPlayed: Int = 0) {
         self.appID = appID
         self.name = name
         self.install = install
@@ -30,6 +32,7 @@ public struct LibraryGame: Sendable, Hashable, Identifiable {
         self.is32Bit = is32Bit
         self.art = art
         self.installFolder = installFolder
+        self.minutesPlayed = minutesPlayed
     }
 
     public var id: String { appID }
@@ -50,6 +53,32 @@ public struct Library: Sendable, Equatable {
 
     public var all: [LibraryGame] { installed + notInstalled }
     public func game(_ appID: String) -> LibraryGame? { all.first { $0.appID == appID } }
+
+    /// The games to show someone as their own: those with a cover, the most played first. Games never played
+    /// follow in a mixed order that is the same every time, so the same covers come up at each launch.
+    public func showcase(count: Int) -> [LibraryGame] {
+        let ranked = all.filter { $0.art.cover != nil }.sorted { a, b in
+            if a.minutesPlayed != b.minutesPlayed { return a.minutesPlayed > b.minutesPlayed }
+            let (x, y) = (Self.mixKey(a.appID), Self.mixKey(b.appID))
+            return x != y ? x < y : a.appID < b.appID
+        }
+        return Array(ranked.prefix(max(0, count)))
+    }
+
+    /// Lays ranked items out in a row with the first in the middle and the rest alternating outwards,
+    /// so the last ones end up at the edges.
+    public static func centred<Item>(_ ranked: [Item]) -> [Item] {
+        var row: [Item] = []
+        for (index, item) in ranked.enumerated() {
+            if index.isMultiple(of: 2) { row.append(item) } else { row.insert(item, at: 0) }
+        }
+        return row
+    }
+
+    /// A fixed scramble of an app ID (FNV-1a). Swift's own hashing changes from one launch to the next.
+    static func mixKey(_ appID: String) -> UInt64 {
+        appID.utf8.reduce(14_695_981_039_346_656_037) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }
+    }
 }
 
 /// Works out the Windows games in the Steam library from Steam's own files. Reading changes nothing.
@@ -83,7 +112,7 @@ public struct LibraryReader: Sendable {
         let steam = SteamInstall(paths: paths)
         let config = SteamConfig(paths: paths)
         let info = AppInfo.load(paths.steamAppInfo)
-        let options = config.allLaunchOptions()
+        let (options, minutes) = config.appSettings()
         let mapped = config.compatToolAppIDs()
         let apps = steam.installedApps()
 
@@ -103,7 +132,8 @@ public struct LibraryReader: Sendable {
                 launchOptions: options[app.appID] ?? "",
                 is32Bit: is32Bit(app, entry: info[app.appID]),
                 art: GameArt(appID: app.appID, paths: paths),
-                installFolder: app.library.appending(path: "steamapps/common/\(app.installDir)")
+                installFolder: app.library.appending(path: "steamapps/common/\(app.installDir)"),
+                minutesPlayed: minutes[app.appID] ?? 0
             )
         }
 
@@ -120,7 +150,8 @@ public struct LibraryReader: Sendable {
                     install: .notInstalled,
                     launchOptions: options[entry.appID] ?? "",
                     is32Bit: entry.launches.first(where: \.isForWindows)?.bits.map { $0 == 32 },
-                    art: GameArt(appID: entry.appID, paths: paths)
+                    art: GameArt(appID: entry.appID, paths: paths),
+                    minutesPlayed: minutes[entry.appID] ?? 0
                 )
             }
 

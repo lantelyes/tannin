@@ -9,6 +9,12 @@ struct Fixture {
     var logLines: [LogLine] = []
     var setup: [Setup.Step: Setup.State] = Fixture.setupDone
     var setupProgress: SetupProgress?
+    var setupFailure: SetupFailure?
+    var steamPlayAdd = SteamPlayAdd.idle
+    /// Whether the setup window is drawn as on a first run, when its corner button quits the app.
+    var isFirstRun = true
+    /// Whether the setup window's Details are open.
+    var showsSetupDetails = false
     var selection: SidebarSelection?
     var isShowingSteamPlaySheet = false
     /// What Tannin knows about its own updates; nil is a copy that cannot update itself.
@@ -107,40 +113,90 @@ struct Fixture {
         ]
     }
 
-    /// The setup window: part-way through the download, waiting for its last step, and done.
+    /// Every drawn state of the setup window, by the name its picture is saved under.
     static var setupScenarios: [(name: String, fixture: Fixture)] {
-        func setup(steamPlay: Setup.State) -> Fixture {
-            Fixture(status: steamPlay.isDone ? ready : steamPlayOff, library: .empty, setup: [
-                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .done("Wine 11.19"),
-                .bridge: .done("NotProton 1.2.6"), .steamPlay: steamPlay,
-            ])
+        func window(_ states: [Setup.Step: Setup.State], status: TanninStatus = steamPlayOff, library: Library = setupLibrary,
+                    progress: SetupProgress? = nil, failure: SetupFailure? = nil, steamPlay: SteamPlayAdd = .idle,
+                    isFirstRun: Bool = true, details: Bool = false) -> Fixture {
+            Fixture(status: status, library: library, setup: states, setupProgress: progress, setupFailure: failure,
+                    steamPlayAdd: steamPlay, isFirstRun: isFirstRun, showsSetupDetails: details)
         }
+        func engine(_ received: Int64, verifying: Bool = false, paused: Bool = false) -> SetupProgress {
+            SetupProgress(step: .engine, download: DownloadProgress(name: Pins.engine.name, received: received, total: Pins.engine.size, isVerifying: verifying),
+                          isPaused: paused)
+        }
+        func bridge(_ pin: Pin, _ received: Int64, verifying: Bool = false) -> SetupProgress {
+            SetupProgress(step: .bridge, download: DownloadProgress(name: pin.name, received: received, total: pin.size, isVerifying: verifying))
+        }
+        let stopped = SetupFailure(DownloadError.allSourcesFailed(name: Pins.engine.name, lastError: ""), during: engine(312_000_000))
+        let damaged = SetupFailure(DownloadError.wrongHash(name: Pins.engine.name, expected: "", actual: ""), during: engine(Pins.engine.size ?? 0))
+        let noRosetta = setupStates(rosetta: .ready)
+        let engineHere = setupStates(engine: .done("Wine 11.19"), bridge: .ready)
+        let lastStep = setupStates(engine: .done("Wine 11.19"), bridge: .done("NotProton 1.2.6"), steamPlay: .ready)
+        let foreign = setupStates(engine: .done("Wine 11.19"), bridge: .done("NotProton 1.2.6"), steamPlay: .waiting("Another tool is loaded into Steam"))
+        let oneGame = Library(installed: [], notInstalled: [game("15210", "Silent Hunter III", install: .notInstalled)])
         return [
-            ("setup", setupDownloading),
-            ("setup-last-step", setup(steamPlay: .ready)),
-            ("setup-done", setup(steamPlay: .done("On"))),
+            // The four moments, in the order someone meets them.
+            ("setup-before", window(setupStates())),
+            ("setup", window(setupStates(), progress: engine(312_000_000))),
+            ("setup-last-step", window(lastStep)),
+            ("setup-done", window(setupDone, status: noToolkit)),
+            // The wait, phase by phase.
+            ("setup-before-rosetta", window(noRosetta)),
+            ("setup-rosetta", window(noRosetta, progress: SetupProgress(step: .rosetta))),
+            ("setup-unpacking", window(setupStates(), progress: engine(Pins.engine.size ?? 0, verifying: true))),
+            ("setup-bridge", window(engineHere, progress: bridge(Pins.valveLinux, 22_500_000))),
+            ("setup-building", window(engineHere, progress: bridge(Pins.valveWin64, Pins.valveWin64.size ?? 0, verifying: true))),
+            ("setup-paused", window(setupStates(), progress: engine(312_000_000, paused: true))),
+            ("setup-failed", window(setupStates(), failure: stopped)),
+            ("setup-failed-damaged", window(setupStates(), failure: damaged)),
+            ("setup-continue", window(engineHere)),
+            // The Steam Play step.
+            ("setup-adding", window(lastStep, steamPlay: .adding)),
+            ("setup-refused", window(lastStep, steamPlay: .refused)),
+            ("setup-add-failed", window(lastStep, steamPlay: .failed(SteamAddonError.steamStillRunning.description))),
+            ("setup-foreign", window(foreign, status: status(steamPlay: .foreign("/usr/local/lib/other.dylib"), addonLoaded: nil))),
+            // Details.
+            ("setup-details", window(setupStates(), progress: engine(312_000_000), details: true)),
+            ("setup-details-last-step", window(lastStep, details: true)),
+            ("setup-details-before", window(noRosetta, details: true)),
+            // Without covers, and opened again later.
+            ("setup-no-steam", window(setupStates(steam: .ready), library: .empty)),
+            ("setup-no-library", window(setupStates(), library: .empty)),
+            ("setup-one-game", window(setupStates(), library: oneGame)),
+            ("setup-done-no-games", window(setupDone, status: noToolkit, library: .empty)),
+            ("setup-done-again", window(setupDone, status: ready, isFirstRun: false)),
         ]
     }
+
+    /// The setup window part-way through the engine download.
+    static var setupDownloading: Fixture { setupScenarios.first { $0.name == "setup" }!.fixture }
+
+    /// The five steps on a Mac that has Rosetta and Steam and nothing of Tannin's, with any of them replaced.
+    private static func setupStates(rosetta: Setup.State = .done("Installed"), steam: Setup.State = .done("In Applications"),
+                                    engine: Setup.State = .ready, bridge: Setup.State = .waiting("Needs the Wine engine first"),
+                                    steamPlay: Setup.State = .waiting("Needs the steps above first")) -> [Setup.Step: Setup.State] {
+        [.rosetta: rosetta, .steam: steam, .engine: engine, .bridge: bridge, .steamPlay: steamPlay]
+    }
+
+    /// A library of 103 Windows games, none installed. Seven have covers and play time; the pictures made from
+    /// this are public, so the covers are a fixed set and not whatever this Mac's own most played games are.
+    private static let setupLibrary: Library = {
+        let played = [
+            ("1151640", "Horizon Zero Dawn™ Complete Edition"), ("1174180", "Red Dead Redemption 2"), ("1190460", "DEATH STRANDING"),
+            ("377160", "Fallout 4"), ("782330", "DOOM Eternal"), ("1449560", "Metro Exodus Enhanced Edition"),
+            ("1895880", "Ratchet & Clank: Rift Apart"),
+        ].enumerated().map { index, entry in
+            LibraryGame(appID: entry.0, name: entry.1, install: .notInstalled, art: GameArt(appID: entry.0, paths: .live),
+                        minutesPlayed: 4200 - index * 600)
+        }
+        let rest = (1...96).map { LibraryGame(appID: "9\(100_000 + $0)", name: "Game \($0)", install: .notInstalled) }
+        return Library(installed: [], notInstalled: played + rest)
+    }()
 
     /// Every drawn state of the Updates group in Settings.
     static var settingsScenarios: [(name: String, updates: UpdateStatus?)] {
         [("plain", nil), ("up-to-date", .upToDate), ("checking", .checking), ("update", newer), ("failed", offline)]
-    }
-
-    /// The setup window part-way through the engine download.
-    static var setupDownloading: Fixture {
-        Fixture(
-            status: steamPlayOff,
-            library: .empty,
-            setup: [
-                .rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .ready,
-                .bridge: .waiting("Needs the Wine engine first"), .steamPlay: .waiting("Needs the steps above first"),
-            ],
-            setupProgress: SetupProgress(
-                step: .engine,
-                download: DownloadProgress(name: Pins.engine.name, received: 312_000_000, total: Pins.engine.size, isVerifying: false)
-            )
-        )
     }
 
     // MARK: Pieces

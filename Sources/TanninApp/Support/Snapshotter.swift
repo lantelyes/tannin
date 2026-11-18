@@ -20,7 +20,9 @@ enum Snapshotter {
         NSApp.activate(ignoringOtherApps: true)
 
         let appearances = [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)]
-        for (name, appearance) in appearances {
+        // TANNIN_SNAPSHOT_ONLY=setup goes straight to the setup window.
+        let setupOnly = only?.hasPrefix("setup") == true
+        for (name, appearance) in appearances where !setupOnly {
             NSApp.appearance = NSAppearance(named: appearance)
 
             await model.showLiveData()
@@ -40,27 +42,40 @@ enum Snapshotter {
 
             if only == nil, !drawsItself { captureQuestion(to: folder.appending(path: "move-\(name).png")) }
         }
-        if only != nil { return NSApp.terminate(nil) }
+        if only != nil, !setupOnly { return NSApp.terminate(nil) }
 
-        openSettings()
-        for (name, appearance) in appearances {
-            NSApp.appearance = NSAppearance(named: appearance)
-            for scenario in Fixture.settingsScenarios {
-                updates.show(scenario.updates)
-                await capture(settingsWindowID, to: folder.appending(path: "settings-\(scenario.name)-\(name).png"))
+        if !setupOnly {
+            openSettings()
+            for (name, appearance) in appearances {
+                NSApp.appearance = NSAppearance(named: appearance)
+                for scenario in Fixture.settingsScenarios {
+                    updates.show(scenario.updates)
+                    await capture(settingsWindowID, to: folder.appending(path: "settings-\(scenario.name)-\(name).png"))
+                }
             }
+            window(settingsWindowID)?.close()
+            updates.show(nil)
         }
-        window(settingsWindowID)?.close()
-        updates.show(nil)
 
+        // Whether Details are open is the person's own setting; it is put back as it was afterwards.
+        let detailsKey = "setupDetailsExpanded"
+        let detailsWereOpen = UserDefaults.standard.bool(forKey: detailsKey)
+        UserDefaults.standard.set(false, forKey: detailsKey)
         openWindow(WindowID.setup)
+        if setupOnly { window(WindowID.main)?.orderOut(nil) }
         for (name, appearance) in appearances {
             NSApp.appearance = NSAppearance(named: appearance)
-            for scenario in Fixture.setupScenarios {
+            // The window as it is on this Mac right now, with this Mac's own library. Not a picture to publish.
+            UserDefaults.standard.set(false, forKey: detailsKey)
+            await model.showLiveData()
+            await capture(WindowID.setup, to: folder.appending(path: "setup-live-\(name).png"))
+            for scenario in Fixture.setupScenarios where only.map({ scenario.name.hasPrefix($0) }) ?? true {
+                UserDefaults.standard.set(scenario.fixture.showsSetupDetails, forKey: detailsKey)
                 model.show(scenario.fixture)
                 await capture(WindowID.setup, to: folder.appending(path: "\(scenario.name)-\(name).png"))
             }
         }
+        UserDefaults.standard.set(detailsWereOpen, forKey: detailsKey)
         NSApp.terminate(nil)
     }
 

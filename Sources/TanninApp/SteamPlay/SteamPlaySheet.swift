@@ -4,6 +4,8 @@ import SwiftUI
 struct SteamPlaySheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    /// True when the setup window asks: what happens next is then shown in that window, not in an alert.
+    var isForSetup = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -29,7 +31,13 @@ struct SteamPlaySheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Add Steam Play") {
                     dismiss()
-                    Task { await model.addSteamPlay() }
+                    Task {
+                        if isForSetup {
+                            await model.addSteamPlayFromSetup()
+                        } else {
+                            await model.addSteamPlay()
+                        }
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)

@@ -716,3 +716,38 @@ the pop-up has made since 0.4.0); a disk image dropped on the sheet; a copy Appl
 try with); removing D3DMetal with Steam open and then starting a game without restarting Steam (Steam happened
 to be closed when it was removed; adding was done with it open); a real game that needs Direct3D 12; a second
 Mac.
+
+## 2026-11-18: the setup window, one screen that changes (branch `setup-window`, for 0.6.0)
+
+The five-row checklist is replaced by one window: the person's most played Windows games across the top, one
+button, a bar for the whole job, one stop for Steam Play, and Show My Games at the end. The designs are on the
+canvas pages "Setup" (the options) and "Decided · Setup" (boards T01 to T05). What was built and seen:
+
+- **One value decides what the window shows.** `SetupPhase` (core) is worked out from the five step states,
+  the step that is running, a failure and the Steam Play step. Steam Play being on in Steam.app does not count
+  as finished while Tannin's own files are missing; that came up in the run below, where Steam.app has Steam
+  Play on and the home folder was empty.
+- **The download is 654 MB, not 550.** The old sentence added the engine and the NotProton kit and left out
+  Valve's two archives (37.7 and 63.7 MB). Their pins now state their sizes, taken from the files whose hashes
+  are pinned, so the bar and "about 650 MB" cover everything.
+- **Play time is in `localconfig.vdf`,** under each app beside `LaunchOptions`, as `Playtime` in minutes (LEGO
+  Builder's Journey: 53). It is read in the same pass as the launch options.
+- **Run from nothing, in the built app, with a home folder in the scratchpad** (`TANNIN_HOME`, and
+  `TANNIN_STEAM_APP` pointing at a stand-in Steam.app with no Steam Play in it; both are read by the app only).
+  The library was a read-only copy of this Mac's own: 103 games, the seven most played as covers. Set Up
+  downloaded all four files (sizes exact), unpacked the engine and built the runner in about a minute, and the
+  covers came into colour with it. Pause stopped at 45 of 479 MB and Resume carried on from there. With the
+  downloads sent to a dead proxy the window said "The download stopped. Check your connection." with Try
+  Again, and no alert. At the last step the button opened the unchanged explanation sheet; it was cancelled.
+  Not Now opened the main window. With the real Steam.app (Steam Play on) the same home showed the finished
+  screen, and Show My Games opened the main window on the most played game, in the opened Not Installed
+  section, scrolled into view, with Install in Steam at the top.
+- **The App Management link** `x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles`
+  opens System Settings on the page named App Management (macOS 27.2).
+- 108 tests pass. Every state has a picture taken with the system's capture, compared with boards T01 to T05.
+
+**Not done:** Add Steam Play was not pressed from the new window (it changes Steam.app), so "Adding Steam
+Play…", the refusal by macOS with Open Settings, and the jump to the last screen have only been seen from
+prepared data. Rosetta being installed by the window (this Mac has it). A library too small for the band, on a
+real account. A second Mac.
+

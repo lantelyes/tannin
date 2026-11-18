@@ -151,14 +151,22 @@ public struct SteamConfig: Sendable {
     }
 
     /// Launch options for every app that has any, read in one pass.
-    public func allLaunchOptions() -> [String: String] {
-        guard let file = try? localConfig(), let vdf = try? VDF.load(file) else { return [:] }
+    public func allLaunchOptions() -> [String: String] { appSettings().launchOptions }
+
+    /// Minutes played, as Steam counts them, for every app that has been played.
+    public func playtimes() -> [String: Int] { appSettings().minutesPlayed }
+
+    /// What the signed-in user's settings file says about each app, read in one pass over the file.
+    func appSettings() -> (launchOptions: [String: String], minutesPlayed: [String: Int]) {
+        guard let file = try? localConfig(), let vdf = try? VDF.load(file) else { return ([:], [:]) }
         let apps = vdf.value(at: Array(Self.launchOptionsPath("").dropLast(2)))?.pairs ?? []
-        var result: [String: String] = [:]
+        var options: [String: String] = [:]
+        var minutes: [String: Int] = [:]
         for app in apps {
-            if let options = app.value["LaunchOptions"]?.string, !options.isEmpty { result[app.key] = options }
+            if let text = app.value["LaunchOptions"]?.string, !text.isEmpty { options[app.key] = text }
+            if let played = app.value["Playtime"]?.string.flatMap(Int.init), played > 0 { minutes[app.key] = played }
         }
-        return result
+        return (options, minutes)
     }
 
     public func setLaunchOptions(appID: String, _ options: String) throws {

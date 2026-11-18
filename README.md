@@ -40,10 +40,10 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/setup-dark.png">
-    <img src="docs/screenshots/setup-light.png" width="440" alt="The Set Up Tannin window: five steps, with the Wine engine downloading">
+    <img src="docs/screenshots/setup-light.png" width="520" alt="The Set Up Tannin window: covers of Windows games across the top, some in colour, and the Wine engine downloading">
   </picture>
   <br>
-  <sub>Setup is five steps, each one saying what it does. The last is the only one that changes Steam, and it asks first.</sub>
+  <sub>Setup is one window. Your own Windows games run across the top and come into colour as it goes. The last step is the only one that changes Steam, and it asks first.</sub>
 </p>
 
 | Engines & Renderers | Steam Play |
@@ -77,9 +77,10 @@
 3. macOS will say it could not verify Tannin, because this build is not signed with an Apple developer
    certificate. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**.
    You only do this once.
-4. Follow **Set Up Tannin**. It downloads the Wine engine and the Steam bridge (about 550 MB) and last
-   of all asks before it adds Steam Play to Steam. When macOS asks whether Tannin may change other
-   apps, allow it.
+4. Press **Set Up**. Tannin downloads the Wine engine and the Steam bridge (about 650 MB) and then
+   asks before it adds Steam Play to Steam. The first time, macOS may refuse that step until Tannin is
+   allowed under **Privacy & Security › App Management**; the window says so and has a button that
+   opens that page. Allow it and add Steam Play again.
 5. Optional: add Apple's D3DMetal renderer, under **Engines & Renderers** or from a game's Renderer
    pop-up. Games that use Direct3D 12 need it.
 
