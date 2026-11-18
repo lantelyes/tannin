@@ -15,7 +15,7 @@ feed="${TANNIN_FEED_URL:-https://lantelyes.github.io/tannin/appcast.xml}"
 # The public half of the key that signs updates. An app only installs an update signed with the
 # private half, which stays in the Keychain of the Mac that makes releases. While this is empty the
 # app is built without updating: no feed, and "Check for Updates…" stays disabled.
-public_key=""
+public_key="4nZIWy/UFPuPllIeBGV3upSKi+462cOd8anyKoX0EVs="
 
 swift build -c release --product TanninApp
 products="$(swift build -c release --show-bin-path)"
@@ -50,6 +50,12 @@ if [ -n "$public_key" ]; then
   <key>SUEnableAutomaticChecks</key><true/>
   <key>SUScheduledCheckInterval</key><integer>86400</integer>
   <key>SUAllowsAutomaticUpdates</key><false/>"
+  case "$feed" in
+    http://localhost*)
+      # A test feed served from this Mac. macOS refuses plain http unless the app says local addresses are fine.
+      updates="$updates
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>" ;;
+  esac
 fi
 
 cat > "$app/Contents/Info.plist" <<PLIST
