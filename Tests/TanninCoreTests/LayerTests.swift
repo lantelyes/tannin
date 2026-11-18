@@ -482,6 +482,16 @@ private func makeEngines(_ specs: [EngineSpec]) throws -> Paths {
         #expect(store.d3dMetal()?.version == "4.0b3")
     }
 
+    @Test func knowsAGameThatAskedForDirect3D12AndDrewNothing() {
+        // What a Direct3D 12 program left on this engine without D3DMetal, 2026-11-18.
+        let asked = "[mvk-info] MoltenVK version 1.4.2\nwarn:  DXGIAdapter: Unknown interface query f0db4c7f-fe5a-42a2-bd62-f2a6cf6fc83e\nwarn:  DXGIAdapter: Unknown interface query 17399d75-964e-4c03-99f8-9d4fd196dd62\n"
+        #expect(GameLogSigns.neededDirect3D12(wineLog: asked))
+        // LEGO Builder's Journey asks the same, then settles for Direct3D 11 on DXMT, and runs.
+        #expect(!GameLogSigns.neededDirect3D12(wineLog: asked + "info:  Maximum supported feature level: D3D_FEATURE_LEVEL_11_1\ninfo:  Using feature level D3D_FEATURE_LEVEL_11_1\n"))
+        #expect(!GameLogSigns.neededDirect3D12(wineLog: "info:  Using feature level D3D_FEATURE_LEVEL_11_0\n"))
+        #expect(!GameLogSigns.neededDirect3D12(wineLog: ""))
+    }
+
     @Test func theBugReportListsEnginesAndRenderersInThePagesOrder() {
         #expect(LogReader.enginesLine(installed: [.wine1119, .wine1117], fallback: .wine1119) == "11.19 (default), 11.17")
         #expect(LogReader.enginesLine(installed: [.wine1119], fallback: .wine1119) == "11.19")

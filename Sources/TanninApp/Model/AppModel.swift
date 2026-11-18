@@ -37,6 +37,8 @@ final class AppModel {
     private(set) var runningGames: Set<String> = []
     /// Games whose last start was refused the screen size they asked for.
     private(set) var refusedScreenSize: Set<String> = []
+    /// Games whose last start asked for Direct3D 12 while D3DMetal was not on the Mac, and drew nothing.
+    private(set) var neededDirect3D12: Set<String> = []
     /// A plain description of the action in progress, or nil.
     private(set) var activity: String?
     private(set) var errorMessage: String?
@@ -124,6 +126,9 @@ final class AppModel {
             var withEnvironment: Set<String> = []
             var running: Set<String> = []
             var refused: Set<String> = []
+            // Only D3DMetal has Direct3D 12; with it on the Mac there is nothing to say.
+            let d3dMetalIsAdded = D3DMetalLink(paths: paths).linkedVersion() != nil
+            let neededDirect3D12 = d3dMetalIsAdded ? [] : Set(games.filter { GameLogSigns.neededDirect3D12(appID: $0, paths: paths) })
             for appID in games where window.hasEnvironment(appID: appID) {
                 withEnvironment.insert(appID)
                 fixedWindows[appID] = window.size(appID: appID)
@@ -149,6 +154,7 @@ final class AppModel {
                 withEnvironment: withEnvironment,
                 running: running,
                 refused: refused,
+                neededDirect3D12: neededDirect3D12,
                 logLines: LogReader(paths: paths).recentLines(),
                 setup: Setup(paths: paths).states(),
                 upkeep: Upkeep(paths: paths).plan(),
@@ -177,6 +183,7 @@ final class AppModel {
         if gamesWithEnvironment != snapshot.withEnvironment { gamesWithEnvironment = snapshot.withEnvironment }
         if runningGames != snapshot.running { runningGames = snapshot.running }
         if refusedScreenSize != snapshot.refused { refusedScreenSize = snapshot.refused }
+        if neededDirect3D12 != snapshot.neededDirect3D12 { neededDirect3D12 = snapshot.neededDirect3D12 }
         reconcileSelection()
     }
 
@@ -220,6 +227,7 @@ final class AppModel {
         gamesWithEnvironment = fixture.gamesWithEnvironment
         runningGames = fixture.runningGames
         refusedScreenSize = fixture.refusedScreenSize
+        neededDirect3D12 = fixture.neededDirect3D12
     }
 
     /// Goes back to what is really on this Mac.

@@ -64,7 +64,7 @@ struct SetupView: View {
             .padding(.bottom, 20)
         }
         .frame(width: 620)
-        .frame(minHeight: 540)
+        .frame(height: 610)
         .sheet(isPresented: $isAddingSteamPlay) {
             SteamPlaySheet()
         }

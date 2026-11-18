@@ -26,6 +26,7 @@ struct Fixture {
     var gamesWithEnvironment: Set<String> = ["1544360", "50300"]
     var runningGames: Set<String> = []
     var refusedScreenSize: Set<String> = []
+    var neededDirect3D12: Set<String> = []
     /// The Wine version a game's page fetched and the game has not moved to yet.
     var wantedEngines: [String: EngineSpec] = [:]
     /// Set to show the Add D3DMetal sheet, in this state.
@@ -78,6 +79,8 @@ struct Fixture {
                                           gameEngines: [lego.appID: GameEngine(pin: .wine1117, runsOn: .wine1119)])),
             ("game-d3dmetal-removed", Fixture(status: noToolkit, library: Library(installed: [legoOnD3DMetal], notInstalled: [silentHunter, specOps]),
                                               selection: .game(lego.appID), layerUsage: [lego.appID: .dxmt])),
+            ("game-needs-direct3d-12", Fixture(status: noToolkit, library: Library(installed: [legoCapped], notInstalled: [silentHunter, specOps]),
+                                               selection: .game(lego.appID), neededDirect3D12: [lego.appID])),
             ("game-wine-fetching", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
                                            engineProgress: downloading, wantedEngines: [lego.appID: .wine1117])),
             ("game-wine-fetch-paused", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],

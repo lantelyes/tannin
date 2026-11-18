@@ -34,7 +34,7 @@
   <div class="wrap">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="screenshots/game-dark.png">
-      <img class="shot" src="screenshots/game-light.png" width="1880" height="1280" alt="Tannin’s window: Windows games in the sidebar, and one game’s page with its artwork, a Play button and its graphics settings">
+      <img class="shot" src="screenshots/game-light.png" width="1880" height="1280" alt="Tannin’s window: Windows games in the sidebar, and one game’s page with its artwork, a Play button, what it runs on and its settings">
     </picture>
   </div>
 
@@ -45,7 +45,7 @@
         <li>Open the download and drag Tannin into your Applications folder.</li>
         <li>Open Tannin. macOS will say it could not verify it, so open System Settings › Privacy &amp; Security and click Open Anyway. You only do this once.</li>
         <li>Follow Set Up Tannin. It downloads the Wine engine and asks before it changes Steam.</li>
-        <li>Optional: add Apple’s <a href="https://developer.apple.com/download/all/?q=game%20porting%20toolkit">Game Porting Toolkit</a> (free with an Apple account). Games that use Direct3D 12 need it.</li>
+        <li>Optional: add Apple’s D3DMetal renderer, under Engines &amp; Renderers. It comes in Apple’s <a href="https://developer.apple.com/download/all/?q=game%20porting%20toolkit">Game Porting Toolkit</a>, free with an Apple account. Games that use Direct3D 12 need it.</li>
       </ol>
       <p>Then install a Windows game from your Steam library and press Play, in Steam or in Tannin.</p>
     </section>
@@ -58,15 +58,15 @@
         <tr><th scope="row">Changes</th><td>Two lines of Steam’s settings.</td></tr>
         <tr><th scope="row">Signs</th><td>Steam again, on your Mac, so that it will load the added file.</td></tr>
         <tr><th scope="row">Stops</th><td>Steam updating itself, because a Steam update turns Steam Play off.</td></tr>
-        <tr><th scope="row">To undo</th><td>Engine › Remove Steam Play puts back a copy of Steam signed by Valve. Your games, saves and account are not touched.</td></tr>
+        <tr><th scope="row">To undo</th><td>Steam Play › Remove Steam Play puts back a copy of Steam signed by Valve. Your games, saves and account are not touched.</td></tr>
       </table>
     </section>
 
     <section>
       <h2>Known limits</h2>
       <ul>
-        <li>Games that use Direct3D 12 need Apple’s Game Porting Toolkit.</li>
-        <li>Direct3D 9 games run on Wine’s own, slower graphics layer.</li>
+        <li>Games that use Direct3D 12 need Apple’s D3DMetal renderer.</li>
+        <li>Direct3D 9 games are drawn by Wine itself, which is slower.</li>
         <li>When Steam moves to a build Tannin does not know yet, Steam Play stays off until Tannin catches up. Mac games are not affected.</li>
         <li>Games whose anti-cheat needs Windows kernel drivers do not run.</li>
       </ul>

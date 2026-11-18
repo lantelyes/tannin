@@ -118,11 +118,8 @@ struct GameRunsOn: View {
                 if row.isInstalled {
                     Text(row.spec.title).tag(WineChoice.pinned(row.spec))
                 } else {
-                    VStack {
-                        Text(row.spec.title)
-                        Text("\(row.spec.downloadSize) to download")
-                    }
-                    .tag(WineChoice.pinned(row.spec))
+                    PopUpEntry(row.spec.title, detail: "\(row.spec.downloadSize) to download")
+                        .tag(WineChoice.pinned(row.spec))
                     // Another engine is built around what setup installs, so there has to be one first.
                     .selectionDisabled(model.status?.engineInstalled != true)
                 }
@@ -203,12 +200,9 @@ struct GameRunsOn: View {
                 } else if d3dMetalIsMissing {
                     option(.d3dMetal, detail: "Apple's. Not on this Mac yet")
                 } else {
-                    VStack {
-                        Text("D3DMetal")
-                        Text("Apple's. Not on this Mac yet")
-                    }
-                    .badge(Text("Add…"))
-                    .tag(RendererChoice.addD3DMetal)
+                    PopUpEntry("D3DMetal", detail: "Apple's. Not on this Mac yet")
+                        .badge(Text("Add…"))
+                        .tag(RendererChoice.addD3DMetal)
                 }
             }
         } label: {
@@ -221,11 +215,8 @@ struct GameRunsOn: View {
     }
 
     private func option(_ renderer: GraphicsLayer, detail: String) -> some View {
-        VStack {
-            Text(renderer.title)
-            Text(detail)
-        }
-        .tag(RendererChoice.renderer(renderer))
+        PopUpEntry(renderer.title, detail: detail)
+            .tag(RendererChoice.renderer(renderer))
     }
 
     /// Choosing D3DMetal while it is not on the Mac opens the sheet that adds it and leaves the renderer as it

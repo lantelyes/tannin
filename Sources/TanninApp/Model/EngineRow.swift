@@ -39,15 +39,6 @@ extension EngineSpec {
     var downloadSize: String { (pin.size ?? 0).megabytes }
 }
 
-/// How adding D3DMetal from a disk image is going, for the sheet that asks for it.
-enum D3DMetalAdd: Equatable {
-    case idle
-    /// Tannin is checking the disk image with this name.
-    case checking(String)
-    /// The last one was not added; the sentence says why.
-    case failed(String)
-}
-
 /// Which Wine engine one game uses.
 struct GameEngine: Equatable {
     /// The engine it is pinned to, or nil when it follows the default.

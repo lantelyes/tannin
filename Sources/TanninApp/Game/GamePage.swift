@@ -159,6 +159,12 @@ struct GamePage: View {
                 .disabled(model.isBusy)
             }
         }
+        if game.isInstalled, !isRunning, !model.d3dMetalIsAdded, model.neededDirect3D12.contains(game.appID) {
+            NoticeRow(symbol: .warning, text: "This game asked for Direct3D 12 and stopped. Only the D3DMetal renderer has it.") {
+                Button("Add D3DMetal…") { model.showD3DMetalSheet() }
+                    .disabled(model.isBusy)
+            }
+        }
         if game.isInstalled, let problem = model.problem {
             if problem == .steamUpdated {
                 SteamMovedNotice { isConfirmingRemoval = true }
