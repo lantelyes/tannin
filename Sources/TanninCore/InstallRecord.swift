@@ -2,7 +2,7 @@ import Foundation
 
 /// The version of Tannin this code is. Kept equal to the `VERSION` file by a test.
 public enum TanninVersion {
-    public static let current = "0.3.0"
+    public static let current = "0.4.0"
 }
 
 /// What Tannin has installed and from which versions, written whenever it builds or changes those parts.
@@ -40,18 +40,20 @@ public struct InstallRecord: Codable, Sendable, Equatable {
 
     /// The record of what is on disk now. Nil when no runner has been built.
     public static func current(paths: Paths = .live) -> InstallRecord? {
-        let runner = Runner(paths: paths)
-        guard FileManager.default.fileExists(atPath: runner.root.appending(path: "lib/wine").path) else { return nil }
-        var ntdll: [String: String] = [:]
-        for arch in ["x86_64", "i386"] {
-            ntdll[arch] = try? Hashing.sha256(of: runner.root.appending(path: "lib/wine/\(arch)-windows/ntdll.dll"))
+        let entries = EngineSpec.all.compactMap { spec -> RunnerEntry? in
+            let runner = Runner(paths: paths, spec: spec)
+            guard runner.exists else { return nil }
+            var ntdll: [String: String] = [:]
+            for arch in ["x86_64", "i386"] {
+                ntdll[arch] = try? Hashing.sha256(of: runner.root.appending(path: "lib/wine/\(arch)-windows/ntdll.dll"))
+            }
+            return RunnerEntry(
+                tool: spec.toolName, build: spec.build, engineVersion: spec.version, wineVersion: spec.wine,
+                ntdll: ntdll, d3dMetalVersion: D3DMetalLink(paths: paths, spec: spec).linkedVersion(),
+                dxmtVersion: LayerStore.dxmtVersion, dxvkVersion: LayerStore.dxvkVersion, tannin: TanninVersion.current
+            )
         }
-        let entry = RunnerEntry(
-            tool: Runner.toolName, build: Runner.build, engineVersion: Pins.engineVersion, wineVersion: Pins.engineWine,
-            ntdll: ntdll, d3dMetalVersion: D3DMetalLink(paths: paths).linkedVersion(),
-            dxmtVersion: LayerStore.dxmtVersion, dxvkVersion: LayerStore.dxvkVersion, tannin: TanninVersion.current
-        )
-        return InstallRecord(shared: Shared(bridgeVersion: Pins.notProtonVersion), runners: [entry])
+        return entries.isEmpty ? nil : InstallRecord(shared: Shared(bridgeVersion: Pins.notProtonVersion), runners: entries)
     }
 
     /// Writes the record of what is on disk now.

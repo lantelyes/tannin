@@ -90,6 +90,16 @@ When an update brings something for what Tannin installed earlier, a **Finish Up
 the sidebar. It leads to the Engine page, where each thing has its own button; nothing is downloaded
 and Steam is not touched until you press one.
 
+## Wine versions
+
+Tannin installs the newest Wine engine it has been tested with. From 0.4.0 the Engine page also lists
+the one before it, and **Install** adds it beside the first. A game then has a **Wine Version** row on
+its page: "Default", or a version of its own.
+
+Before a game moves to another version Tannin keeps a copy of its Windows environment, and
+**More › Restore Windows Environment…** puts that copy back. Only engines that come with Tannin can
+be installed: each needs its own Steam bridge patch, which is checked against a pinned hash.
+
 ## Graphics layers
 
 | Layer | Covers | Where it comes from |
@@ -129,6 +139,7 @@ signed by Valve, and Tannin checks that signature first. Your games, saves and a
 |---|---|---|
 | Steam add-on and Steam bridge | [NotProton](https://github.com/NotProtonNot/NotProton) 1.2.6 | Downloaded, SHA-256 pinned |
 | Wine engine | [winecx-gptk](https://github.com/frankea/winecx-gptk) 4.8.3 (Wine 11.19, CrossOver 26.3 sources) | Downloaded, SHA-256 pinned |
+| Second Wine engine (optional) | [winecx-gptk](https://github.com/dappermint/winecx-gptk) 4.7.3 (Wine 11.17) | Downloaded when you ask for it, SHA-256 pinned |
 | D3DMetal (optional) | Apple Game Porting Toolkit 4 | You download it from Apple; Tannin imports it and checks Apple's signature |
 | DXMT 0.80, DXVK 1.10.3 | [DXMT](https://github.com/3Shain/dxmt), [DXVK](https://github.com/doitsujin/dxvk) | Part of the Wine engine download |
 | Steam client files | Valve | Downloaded from Valve's servers, SHA-256 pinned |
@@ -142,7 +153,7 @@ swift build
 swift test
 scripts/bundle.sh        # build/Tannin.app
 scripts/package.sh       # dist/Tannin-<version>.zip
-scripts/release.sh 0.3.0 --dry-run   # everything a release does, short of publishing
+scripts/release.sh 0.4.0 --dry-run   # everything a release does, short of publishing
 .build/debug/tannin doctor
 ```
 

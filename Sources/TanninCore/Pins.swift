@@ -1,7 +1,7 @@
 import Foundation
 
 /// A download Tannin is willing to use: where it comes from and exactly what it must hash to.
-public struct Pin: Sendable, Equatable {
+public struct Pin: Sendable, Hashable {
     public let name: String
     public let urls: [String]
     public let sha256: String
@@ -33,6 +33,14 @@ public enum Pins {
     )
     public static let engineVersion = "4.8.3"
     public static let engineWine = "11.19"
+
+    /// The engine before it: CrossOver sources on Wine 11.17. Offered beside the newest one, never instead of it.
+    public static let engine1117 = Pin(
+        name: "winecx-gptk-4.7.3-Libraries.tar.gz",
+        urls: ["https://github.com/dappermint/winecx-gptk/releases/download/runtime-v4.7.3/Libraries.tar.gz"],
+        sha256: "a4b5d63493f80698cce5cad8e7212d9a51c8292037b00c478f4652636fcfd331",
+        size: 461_131_598
+    )
 
     /// NotProton release: Steam add-on, Steam bridge, signatures, helpers.
     public static let notProton = Pin(
@@ -97,5 +105,5 @@ public enum Pins {
     public static let steamBundleID = "com.valvesoftware.steam"
 
     /// Every pin, for sanity tests.
-    public static let all: [Pin] = [engine, notProton, valveLinux, valveWin64, steamBundle]
+    public static let all: [Pin] = [engine, engine1117, notProton, valveLinux, valveWin64, steamBundle]
 }

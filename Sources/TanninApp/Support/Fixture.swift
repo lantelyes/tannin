@@ -16,6 +16,11 @@ struct Fixture {
     var upkeep: [Upkeep.Item] = []
     var upkeepProgress: UpkeepProgress?
     var layerUsage: [String: LayerUsage] = [:]
+    var engines: [EngineRow] = Fixture.oneEngine
+    var engineProgress: EngineProgress?
+    var gameEngines: [String: GameEngine] = [:]
+    var environmentCopies: [String: EnvironmentCopy.Info] = [:]
+    var recentlyMoved: Set<String> = []
 
     /// Every drawn state of the main window, by the name its picture is saved under.
     static var mainWindowScenarios: [(name: String, fixture: Fixture)] {
@@ -39,6 +44,15 @@ struct Fixture {
                                                    upkeepProgress: .failed(.graphicsLayers, "A Windows game is running. Quit it first, then try again."))),
             ("after-update-sidebar", Fixture(status: ready, library: library, selection: .game(lego.appID), upkeep: [.graphicsLayers],
                                              layerUsage: [lego.appID: .d3dMetal])),
+            ("engines-downloading", Fixture(status: ready, library: library, selection: .engine, engineProgress: EngineProgress(
+                spec: .wine1117,
+                download: DownloadProgress(name: Pins.engine1117.name, received: 212_000_000, total: Pins.engine1117.size, isVerifying: false)))),
+            ("engines-two", Fixture(status: ready, library: twoGames, selection: .engine, engines: twoEngines)),
+            ("game-wine", wineVersion(pin: nil)),
+            ("game-wine-pinned", wineVersion(pin: .wine1117)),
+            ("game-wine-moved", wineVersion(pin: .wine1117, justMoved: true)),
+            ("game-wine-removed", Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
+                                          gameEngines: [lego.appID: GameEngine(pin: .wine1117, runsOn: .wine1119)])),
             ("logs", Fixture(status: ready, library: library, logLines: log, selection: .logs)),
             ("empty", Fixture(status: ready, library: .empty, selection: nil)),
             ("not-installed", Fixture(status: ready, library: library, selection: .game(silentHunter.appID))),
@@ -105,6 +119,25 @@ struct Fixture {
         )
     }
 
+    /// The engine list as it is before a second engine is installed.
+    static let oneEngine: [EngineRow] = [
+        EngineRow(spec: .wine1119, isInstalled: true, isDefault: true, games: ["1544360"], size: 1_300_000_000),
+        EngineRow(spec: .wine1117, isInstalled: false, isDefault: false, games: [], size: nil),
+    ]
+
+    private static let twoEngines: [EngineRow] = [
+        EngineRow(spec: .wine1119, isInstalled: true, isDefault: true, games: ["1544360"], size: 1_300_000_000),
+        EngineRow(spec: .wine1117, isInstalled: true, isDefault: false, games: ["50300"], size: 1_280_000_000),
+    ]
+
+    /// The game page once a second engine is installed, with the game on the default or pinned.
+    private static func wineVersion(pin: EngineSpec?, justMoved: Bool = false) -> Fixture {
+        let copy = EnvironmentCopy.Info(made: Date(timeIntervalSince1970: 1_794_980_400), fromWine: "11.19", toWine: "11.17")
+        return Fixture(status: ready, library: library, selection: .game(lego.appID), layerUsage: [lego.appID: .d3dMetal],
+                       engines: twoEngines, gameEngines: [lego.appID: GameEngine(pin: pin, runsOn: pin ?? .wine1119)],
+                       environmentCopies: pin == nil ? [:] : [lego.appID: copy], recentlyMoved: justMoved ? [lego.appID] : [])
+    }
+
     private static let ready = status()
     private static let steamUpdated = status(addonLoaded: false)
     private static let steamPlayOff = status(steamPlay: .off, addonLoaded: nil)
@@ -145,6 +178,7 @@ struct Fixture {
     private static let specOpsInstalled = game("50300", "Spec Ops: The Line", install: .installed, size: 7_800_000_000, is32Bit: true)
     private static let silentHunter = game("15210", "Silent Hunter III", install: .notInstalled)
     private static let library = Library(installed: [lego], notInstalled: [silentHunter, specOps])
+    private static let twoGames = Library(installed: [lego, specOpsInstalled], notInstalled: [silentHunter])
 
     private static let log: [LogLine] = [
         ("23:47:01", LogLine.Level.info, "loader", "notproton 1.2.6 starting in steam_osx"),

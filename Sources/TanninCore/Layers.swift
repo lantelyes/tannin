@@ -106,13 +106,17 @@ enum BuiltinMark {
 /// Tannin does not need to be running when a game starts.
 public struct LayerStore: Sendable {
     public let paths: Paths
+    public let spec: EngineSpec
 
-    public init(paths: Paths = .live) { self.paths = paths }
+    public init(paths: Paths = .live, spec: EngineSpec = .newest) {
+        self.paths = paths
+        self.spec = spec
+    }
 
-    /// Names the launch options use.
-    public static let dxmtVariant = "tannin-dxmt"
-    public static let plainVariant = "tannin-plain"
-    public static let dxvkPlugin = "NOTPROTON_TANNIN_DXVK"
+    /// Names the launch options use for the newest engine. Another engine's carry its own ending.
+    public static let dxmtVariant = EngineSpec.newest.dxmtVariant
+    public static let plainVariant = EngineSpec.newest.plainVariant
+    public static let dxvkPlugin = EngineSpec.newest.dxvkPlugin
 
     public static let dxmtVersion = "0.80"
     public static let dxvkVersion = "1.10.3"
@@ -124,14 +128,14 @@ public struct LayerStore: Sendable {
     /// DXVK's files. It has no usable Direct3D 9 or 32-bit half on this engine.
     static let dxvkFiles = ["d3d10core.dll", "d3d11.dll"]
 
-    public var root: URL { paths.layers.appending(path: "winecx-\(Pins.engineVersion)") }
+    public var root: URL { paths.layers.appending(path: "winecx-\(spec.version)") }
     var dxmtTree: URL { root.appending(path: "dxmt") }
     var plainTree: URL { root.appending(path: "plain") }
     var dxvkStage: URL { root.appending(path: "dxvk") }
-    var variantsFile: URL { paths.notproton.appending(path: "variants/tannin.conf") }
-    var pluginsFile: URL { paths.notproton.appending(path: "plugins/tannin.conf") }
+    var variantsFile: URL { paths.notproton.appending(path: "variants/tannin\(spec.layerSuffix).conf") }
+    var pluginsFile: URL { paths.notproton.appending(path: "plugins/tannin\(spec.layerSuffix).conf") }
 
-    private var engine: Engine { Engine(paths: paths) }
+    private var engine: Engine { Engine(paths: paths, spec: spec) }
     private func engineDXMT(_ arch: String) -> URL { engine.root.appending(path: "DXMT/\(arch == "i386" ? "x32" : "x64")") }
     private func engineWine(_ arch: String) -> URL { engine.wine.appending(path: "lib/wine/\(arch)-windows") }
 
@@ -171,9 +175,9 @@ public struct LayerStore: Sendable {
     /// Brings a runner that an earlier Tannin built up to date: DXMT into its 32-bit side, into its 64-bit side
     /// when no D3DMetal is linked, and the files for choosing a layer per game. Nothing is downloaded.
     public func addToRunner() throws {
-        let runner = Runner(paths: paths).root
+        let runner = Runner(paths: paths, spec: spec).root
         try putDXMT(into: runner, arch: "i386")
-        if D3DMetalLink(paths: paths).linkedVersion() == nil { try putDXMT(into: runner, arch: "x86_64") }
+        if D3DMetalLink(paths: paths, spec: spec).linkedVersion() == nil { try putDXMT(into: runner, arch: "x86_64") }
         try prepare()
     }
 
@@ -238,30 +242,30 @@ public struct LayerStore: Sendable {
     /// cleanly and the game goes on to Direct3D 11.
     var variantsText: String {
         """
-        [\(Self.dxmtVariant)]
-        label = DXMT (Tannin)
+        [\(spec.dxmtVariant)]
+        label = DXMT (Tannin, Wine \(spec.wine))
         src = \(dxmtTree.path)
         dst = lib/wine
         remove = x86_64-windows/d3d12.dll
         remove = x86_64-windows/d3d12core.dll
-        build = \(Runner.build)
+        build = \(spec.build)
 
-        [\(Self.plainVariant)]
-        label = Wine Direct3D for DXVK (Tannin)
+        [\(spec.plainVariant)]
+        label = Wine Direct3D for DXVK (Tannin, Wine \(spec.wine))
         src = \(plainTree.path)
         dst = lib/wine
-        build = \(Runner.build)
+        build = \(spec.build)
 
         """
     }
 
     var pluginsText: String {
         """
-        [\(Self.dxvkPlugin)]
-        label = DXVK (Tannin)
+        [\(spec.dxvkPlugin)]
+        label = DXVK (Tannin, Wine \(spec.wine))
         stage = \(dxvkStage.path)
         overrides = d3d11,d3d10core=n,b
-        tools = \(Runner.toolName)*
+        tools = \(spec.toolName)
 
         """
     }

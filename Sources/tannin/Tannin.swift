@@ -29,11 +29,8 @@ struct GPTKCommand: ParsableCommand {
             let toolkit = try GPTK().importToolkit(from: URL(fileURLWithPath: (source as NSString).expandingTildeInPath))
             print("Imported D3DMetal \(toolkit.version). Apple's signature verified.")
             try? FileManager.default.removeItem(at: Paths.live.toolkitSkipped)
-            if FileManager.default.fileExists(atPath: Runner().root.appending(path: "lib/wine").path) {
-                try D3DMetalLink().link(toolkit)
-                try? InstallRecord.write()
-                print("Linked into the runner.")
-            }
+            try EngineStore().linkToolkit(toolkit)
+            print("Linked into the runner.")
         }
     }
 
@@ -49,8 +46,7 @@ struct GPTKCommand: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Link the newest imported D3DMetal into the runner.")
         func run() throws {
             let toolkit = try GPTK().current()
-            try D3DMetalLink().link(toolkit)
-            try? InstallRecord.write()
+            try EngineStore().linkToolkit(toolkit)
             print("D3DMetal \(toolkit.version) linked into the runner.")
         }
     }
@@ -58,8 +54,7 @@ struct GPTKCommand: ParsableCommand {
     struct Unlink: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Take D3DMetal out of the runner and put Wine's own files back.")
         func run() throws {
-            try D3DMetalLink().unlink()
-            try? InstallRecord.write()
+            try EngineStore().unlinkToolkit()
             print("D3DMetal removed from the runner. Games now run on DXMT.")
         }
     }
@@ -159,7 +154,7 @@ struct GameCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "game",
         abstract: "How individual games run.",
-        subcommands: [List.self, Use.self, Set.self, Options.self]
+        subcommands: [List.self, Use.self, Set.self, Options.self, Wine.self, Restore.self]
     )
 
     struct List: ParsableCommand {
@@ -251,9 +246,40 @@ struct GameCommand: ParsableCommand {
                 }
                 settings.upscaling = factor > 0 ? factor : nil
             }
-            let options = settings.launchOptions(merging: existing)
+            let options = settings.launchOptions(merging: existing, engine: EngineStore().engine(for: appID) ?? .newest)
             try config.setLaunchOptions(appID: appID, options)
             print("Launch options for \(appID): \(options.isEmpty ? "(none)" : options)")
+        }
+    }
+
+    struct Wine: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Show or change the Wine version a game runs on (Steam must be closed to change it). A copy of the game's Windows environment is kept first.")
+
+        @Argument(help: "The game's Steam app ID.") var appID: String
+        @Argument(help: "A Wine version such as 11.17, or default.") var wine: String?
+
+        func run() throws {
+            guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 1544360.") }
+            let store = EngineStore()
+            if let wine {
+                try GameMove().move(appID: appID, to: wine == "default" ? nil : try EngineCommand.spec(wine))
+            }
+            let pinned = store.pin(appID: appID)
+            let runsOn = store.engine(for: appID).map(\.title) ?? "nothing installed"
+            print(pinned.map { "Pinned to \($0.title)\(store.isInstalled($0) ? "" : ", which is not installed; it runs on \(runsOn)")" } ?? "Default (\(runsOn))")
+            if let copy = EnvironmentCopy().info(appID: appID) {
+                print("Copy of its Windows environment: \(copy.made.formatted(date: .abbreviated, time: .shortened)), from Wine \(copy.fromWine)")
+            }
+        }
+    }
+
+    struct Restore: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Put back the copy of a game's Windows environment made before it last changed Wine version (Steam must be closed). What is there now goes to the Trash.")
+        @Argument(help: "The game's Steam app ID.") var appID: String
+        func run() throws {
+            guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 1544360.") }
+            try GameMove().restore(appID: appID)
+            print("Put back.")
         }
     }
 
@@ -423,9 +449,72 @@ struct KitCommand: ParsableCommand {
 struct EngineCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "engine",
-        abstract: "The Wine engine.",
-        subcommands: [Install.self, Status.self]
+        abstract: "The Wine engines.",
+        subcommands: [Install.self, Status.self, List.self, Add.self, Default.self, Remove.self]
     )
+
+    /// Finds an engine by its Wine version, e.g. "11.17".
+    static func spec(_ wine: String) throws -> EngineSpec {
+        guard let spec = EngineSpec.all.first(where: { $0.wine == wine }) else {
+            throw ValidationError("Tannin has tested Wine \(EngineSpec.all.map(\.wine).joined(separator: " and ")).")
+        }
+        return spec
+    }
+
+    struct List: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "List the Wine engines Tannin has tested, and which are installed.")
+        func run() {
+            let store = EngineStore()
+            let fallback = store.defaultEngine()
+            for spec in EngineSpec.all {
+                var facts: [String] = []
+                if store.isInstalled(spec) {
+                    facts.append(spec == fallback ? "installed, the default" : "installed")
+                    let pinned = store.pinnedGames(spec)
+                    if !pinned.isEmpty { facts.append("pinned: \(pinned.joined(separator: " "))") }
+                } else {
+                    facts.append("not installed, \((spec.pin.size ?? 0).formatted(.byteCount(style: .file))) to download")
+                }
+                print("\(spec.title)\t\(spec.toolName)\t\(facts.joined(separator: "; "))")
+            }
+        }
+    }
+
+    struct Add: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Install another tested Wine engine beside the present one. Steam shows it after it next starts.")
+        @Argument(help: "The Wine version, for example 11.17.") var wine: String
+        func run() throws {
+            let spec = try EngineCommand.spec(wine)
+            try EngineStore().install(spec)
+            print("\(spec.title) is installed. Restart Steam for it to appear.")
+            if !printChecks(Runner(spec: spec).verify()) { throw ExitCode(1) }
+        }
+    }
+
+    struct Default: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Make an installed engine the one games use unless they are pinned to another. Takes effect when Steam next starts.")
+        @Argument(help: "The Wine version, for example 11.19.") var wine: String
+        func run() throws {
+            let spec = try EngineCommand.spec(wine)
+            try EngineStore().makeDefault(spec)
+            print("\(spec.title) is the default.")
+        }
+    }
+
+    struct Remove: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Move an engine to the Trash. Games pinned to it must be moved first.")
+        @Argument(help: "The Wine version, for example 11.17.") var wine: String
+        func run() throws {
+            let spec = try EngineCommand.spec(wine)
+            let store = EngineStore()
+            let pinned = store.pinnedGames(spec)
+            guard pinned.isEmpty else {
+                throw ValidationError("These games are pinned to \(spec.title): \(pinned.joined(separator: " ")). Move them first: tannin game wine <app id> default")
+            }
+            try store.remove(spec)
+            print("\(spec.title) is in the Trash.")
+        }
+    }
 
     struct Install: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Download, verify and unpack the Wine engine (479 MB).")

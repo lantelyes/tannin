@@ -29,6 +29,8 @@ public struct Paths: Sendable {
     public var layers: URL { tannin.appending(path: "Layers") }
     /// Present once the user has chosen to go without Apple's toolkit during setup.
     public var toolkitSkipped: URL { tannin.appending(path: "toolkit-skipped") }
+    /// Copies of games' Windows environments, made before a game moves to another Wine version.
+    public var environments: URL { tannin.appending(path: "Environments") }
     /// What Tannin has installed, and from which versions.
     public var installRecord: URL { tannin.appending(path: "installed.json") }
 

@@ -124,10 +124,14 @@ public struct GPTK: Sendable {
 /// and Apple's Windows DLLs in place of Wine's own. Wine's originals are kept so this can be undone.
 public struct D3DMetalLink: Sendable {
     public let paths: Paths
+    public let spec: EngineSpec
 
-    public init(paths: Paths = .live) { self.paths = paths }
+    public init(paths: Paths = .live, spec: EngineSpec = .newest) {
+        self.paths = paths
+        self.spec = spec
+    }
 
-    var runner: URL { Runner(paths: paths).root }
+    var runner: URL { Runner(paths: paths, spec: spec).root }
     var stock: URL { runner.appending(path: "lib/tannin-stock") }
     var marker: URL { runner.appending(path: "lib/external/.tannin-d3dmetal") }
 
@@ -143,8 +147,8 @@ public struct D3DMetalLink: Sendable {
 
         // The runner's 64-bit side holds DXMT while no D3DMetal is linked. The two cannot share a game, so
         // Wine's own files go back first, and those are what is kept aside below.
-        let layers = LayerStore(paths: paths)
-        let hasEngine = Engine(paths: paths).isInstalled
+        let layers = LayerStore(paths: paths, spec: spec)
+        let hasEngine = Engine(paths: paths, spec: spec).isInstalled
         if hasEngine { try layers.putWineOwn(into: runner, arch: "x86_64") }
 
         // Keep Wine's own files that are about to be replaced.
@@ -191,8 +195,8 @@ public struct D3DMetalLink: Sendable {
     /// Takes D3DMetal out again. Games then run on DXMT.
     public func unlink() throws {
         try takeOut()
-        let layers = LayerStore(paths: paths)
-        guard Engine(paths: paths).isInstalled, FileManager.default.fileExists(atPath: runner.appending(path: "lib/wine").path) else { return }
+        let layers = LayerStore(paths: paths, spec: spec)
+        guard Engine(paths: paths, spec: spec).isInstalled, FileManager.default.fileExists(atPath: runner.appending(path: "lib/wine").path) else { return }
         try layers.putDXMT(into: runner, arch: "x86_64")
         try layers.prepare()
     }

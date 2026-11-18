@@ -12,6 +12,10 @@ struct GamePage: View {
     @State private var isConfirmingQuit = false
     @State private var isConfirmingRemoval = false
     @State private var isChoosingToolkit = false
+    /// The Wine version the user picked and has not confirmed yet.
+    @State private var pendingMove: WineChoice?
+    @State private var isConfirmingMove = false
+    @State private var isConfirmingRestore = false
 
     init(game: LibraryGame) {
         self.game = game
@@ -56,6 +60,20 @@ struct GamePage: View {
         .onChange(of: game.launchOptions) {
             // Saved, or changed in Steam itself: show what Steam has now.
             draft = SettingsDraft(game.settings)
+        }
+        .confirmationDialog(moveTitle, isPresented: $isConfirmingMove, presenting: pendingMove) { choice in
+            Button(model.status?.steamRunning == true ? "Quit Steam and Move" : "Move") {
+                Task { await model.moveGame(game.appID, to: choice.spec) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("Steam quits and reopens. Tannin first keeps a copy of this game's Windows environment, which holds its settings and may hold its saves, so you can put it back.")
+        }
+        .confirmationDialog(restoreTitle, isPresented: $isConfirmingRestore) {
+            Button("Restore") { Task { await model.restoreGame(game.appID) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(restoreMessage)
         }
         .fileImporter(isPresented: $isChoosingToolkit, allowedContentTypes: [.diskImage, .folder]) { result in
             if case let .success(url) = result {
@@ -105,6 +123,12 @@ struct GamePage: View {
     }
 
     @ViewBuilder private var notices: some View {
+        if model.recentlyMoved.contains(game.appID), let engine = model.gameEngines[game.appID], model.environmentCopies[game.appID] != nil {
+            NoticeRow(symbol: .info, text: "This game moved to \(engine.runsOn.title). A copy of its Windows environment from before is kept.") {
+                Button("Restore…") { isConfirmingRestore = true }
+                    .disabled(model.isBusy)
+            }
+        }
         if game.isInstalled, let problem = model.problem {
             if problem == .steamUpdated {
                 SteamMovedNotice { isConfirmingRemoval = true }
@@ -171,6 +195,7 @@ struct GamePage: View {
                     }
                 }
                 Toggle("Performance Overlay", isOn: $draft.performanceHUD)
+                wineVersionRow
                 LabeledContent("Launch Options") {
                     Text(launchOptionsPreview)
                         .font(.callout.monospaced())
@@ -187,6 +212,80 @@ struct GamePage: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    // MARK: Wine version
+
+    /// The pop-up's entries: follow the default, or one installed engine.
+    private enum WineChoice: Hashable {
+        case followDefault
+        case pinned(EngineSpec)
+
+        var spec: EngineSpec? {
+            if case let .pinned(spec) = self { return spec }
+            return nil
+        }
+    }
+
+    /// Shown once a second engine is installed, or while the game is pinned to one that has been removed.
+    @ViewBuilder private var wineVersionRow: some View {
+        if game.isInstalled, let engine = model.gameEngines[game.appID], model.hasSeveralEngines || engine.pin != nil {
+            if engine.pinIsInstalled {
+                Picker(selection: wineChoice(engine)) {
+                    Text("Default (\(defaultWine))").tag(WineChoice.followDefault)
+                    Divider()
+                    ForEach(model.engines.filter(\.isInstalled)) { row in
+                        Text(row.spec.title).tag(WineChoice.pinned(row.spec))
+                    }
+                } label: {
+                    Text("Wine Version")
+                    if engine.pin != nil {
+                        Text("Set for this game only.")
+                    }
+                }
+                .disabled(model.isBusy)
+            } else if let pin = engine.pin {
+                LabeledContent {
+                    Button("Install") { Task { await model.installEngine(pin) } }
+                        .disabled(model.isBusy)
+                } label: {
+                    Label {
+                        Text("Wine Version")
+                        Text("\(pin.title) is not installed. This game uses \(engine.runsOn.wine) until it is.")
+                    } icon: {
+                        StatusSymbol.warning.image
+                    }
+                }
+            }
+        }
+    }
+
+    private var defaultWine: String { model.engines.first(where: \.isDefault)?.spec.wine ?? Pins.engineWine }
+
+    /// Choosing a version does not apply it: it asks first, because Steam has to quit and a copy is made.
+    private func wineChoice(_ engine: GameEngine) -> Binding<WineChoice> {
+        Binding {
+            engine.pin.map(WineChoice.pinned) ?? .followDefault
+        } set: { choice in
+            guard choice.spec != engine.pin else { return }
+            pendingMove = choice
+            isConfirmingMove = true
+        }
+    }
+
+    private var moveTitle: String {
+        let target = pendingMove?.spec?.title ?? "the default, Wine \(defaultWine)"
+        return "Move \(game.name) to \(target)?"
+    }
+
+    private var restoreTitle: String {
+        guard let copy = model.environmentCopies[game.appID] else { return "Put back the copy?" }
+        return "Put back the copy from \(copy.made.formatted(.dateTime.day().month(.wide).hour().minute()))?"
+    }
+
+    private var restoreMessage: String {
+        guard let copy = model.environmentCopies[game.appID] else { return "" }
+        return "It was made before this game moved from Wine \(copy.fromWine) to \(copy.toWine). Anything the game has saved in its Windows environment since then is replaced. Saves in Steam Cloud are not affected."
     }
 
     // MARK: Graphics layer
@@ -272,7 +371,7 @@ struct GamePage: View {
     }
 
     private var launchOptionsPreview: String {
-        let options = draft.settings.launchOptions(merging: game.launchOptions)
+        let options = draft.settings.launchOptions(merging: game.launchOptions, engine: model.engine(for: game.appID))
         return options.isEmpty ? "None" : options
     }
 
@@ -303,6 +402,11 @@ struct GamePage: View {
                     Button("Show Game Files in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([folder])
                     }
+                }
+                if model.environmentCopies[game.appID] != nil {
+                    Divider()
+                    Button("Restore Windows Environment…") { isConfirmingRestore = true }
+                        .disabled(model.isBusy)
                 }
                 Divider()
                 Button("Copy Launch Options") {

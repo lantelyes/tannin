@@ -76,7 +76,7 @@ private func dll(_ label: String, builtin: Bool) -> Data {
         let plugins = try String(contentsOf: paths.notproton.appending(path: "plugins/tannin.conf"), encoding: .utf8)
         #expect(plugins.contains("[NOTPROTON_TANNIN_DXVK]"))
         #expect(plugins.contains("overrides = d3d11,d3d10core=n,b"))
-        #expect(plugins.contains("tools = notproton-tannin*"))
+        #expect(plugins.contains("tools = notproton-tannin\n"))
 
         try layers.remove()
         #expect(!layers.isPrepared)
@@ -291,5 +291,189 @@ private func dll(_ label: String, builtin: Bool) -> Data {
         #expect(record.runners.first?.d3dMetalVersion == nil)
         #expect(record.runners.first?.tannin == TanninVersion.current)
         #expect(record.runners.first?.ntdll.keys.sorted() == ["i386", "x86_64"])
+    }
+}
+
+/// A home with made-up engines, runners and Steam settings, enough for the engine store.
+private func makeEngines(_ specs: [EngineSpec]) throws -> Paths {
+    let fm = FileManager.default
+    let home = fm.temporaryDirectory.appending(path: "tannin-engines-\(UUID().uuidString)")
+    let paths = Paths(home: home, steamApp: home.appending(path: "Applications/Steam.app"))
+    for spec in specs {
+        for file in Engine.requiredFiles {
+            let url = Engine(paths: paths, spec: spec).wine.appending(path: file)
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(spec.wine.utf8).write(to: url)
+        }
+        let runner = Runner(paths: paths, spec: spec)
+        try fm.createDirectory(at: runner.root.appending(path: "lib/wine"), withIntermediateDirectories: true)
+        try runner.writeToolsLine()
+    }
+    try fm.createDirectory(at: paths.steamConfig.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try "\"InstallConfigStore\"\n{\n\t\"Software\"\n\t{\n\t\t\"Valve\"\n\t\t{\n\t\t\t\"Steam\"\n\t\t\t{\n\t\t\t}\n\t\t}\n\t}\n}\n"
+        .write(to: paths.steamConfig, atomically: true, encoding: .utf8)
+    let local = paths.steamData.appending(path: "userdata/1/config/localconfig.vdf")
+    try fm.createDirectory(at: local.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try "\"UserLocalConfigStore\"\n{\n\t\"Software\"\n\t{\n\t\t\"Valve\"\n\t\t{\n\t\t\t\"Steam\"\n\t\t\t{\n\t\t\t\t\"apps\"\n\t\t\t\t{\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n"
+        .write(to: local, atomically: true, encoding: .utf8)
+    return paths
+}
+
+@Suite struct EngineSpecTests {
+    @Test func everyEngineHasItsOwnNamesAndTheNewestKeepsTheOldOnes() {
+        #expect(EngineSpec.newest.toolName == "notproton-tannin")
+        #expect(EngineSpec.newest.build == "tannin-1")
+        #expect(EngineSpec.newest.dxmtVariant == "tannin-dxmt")
+        #expect(EngineSpec.newest.dxvkPlugin == "NOTPROTON_TANNIN_DXVK")
+        #expect(EngineSpec.wine1117.dxmtVariant == "tannin-dxmt-1117")
+        #expect(EngineSpec.wine1117.dxvkPlugin == "NOTPROTON_TANNIN_DXVK_1117")
+        for keyPath: KeyPath<EngineSpec, String> in [\.version, \.wine, \.build, \.toolName, \.dxmtVariant, \.plainVariant, \.dxvkPlugin] {
+            #expect(Set(EngineSpec.all.map { $0[keyPath: keyPath] }).count == EngineSpec.all.count)
+        }
+        #expect(EngineSpec.all.allSatisfy { $0.toolName.hasPrefix("notproton") })
+    }
+
+    @Test func everyEngineHasAPatchForBothBitWidths() {
+        for spec in EngineSpec.all {
+            for arch in Runner.patchedArchitectures {
+                let pin = NtdllPatch.pins(for: spec).first { $0.arch == arch }
+                let recipe = NtdllRecipe.all.first { $0.arch == arch && $0.cleanSHA256 == pin?.cleanSHA256 }
+                #expect(recipe != nil, "\(spec.wine) \(arch)")
+                #expect(recipe?.patchedSHA256 == pin?.patchedSHA256, "\(spec.wine) \(arch)")
+                #expect(recipe?.runs.allSatisfy { $0.bytes != nil } == true, "\(spec.wine) \(arch)")
+            }
+        }
+    }
+
+    @Test func launchOptionsNameTheGamesOwnEnginesFiles() {
+        let dxmt = GameSettings(layer: .dxmt, frameCap: 60)
+        #expect(dxmt.launchOptions(engine: .wine1117) == "NOTPROTON_RUNNER_VARIANT=tannin-dxmt-1117 DXMT_CONFIG=d3d11.preferredMaxFrameRate=60 %command%")
+        let dxvk = GameSettings(layer: .dxvk, backgroundEffects: true)
+        let on1117 = dxvk.launchOptions(engine: .wine1117)
+        #expect(on1117 == "NOTPROTON_RUNNER_VARIANT=tannin-plain-1117 NOTPROTON_TANNIN_DXVK_1117=1 DXVK_ASYNC=1 %command%")
+        // Read back as the same layer whichever engine wrote it, and rewritten cleanly for another engine.
+        #expect(GameSettings(parsing: on1117) == dxvk)
+        #expect(GameSettings(parsing: on1117).launchOptions(merging: on1117, engine: .newest)
+            == "NOTPROTON_RUNNER_VARIANT=tannin-plain NOTPROTON_TANNIN_DXVK=1 DXVK_ASYNC=1 %command%")
+    }
+}
+
+@Suite struct EngineStoreTests {
+    @Test func theFirstListedEngineIsTheDefaultAndCanBeChanged() throws {
+        let paths = try makeEngines([.wine1119, .wine1117])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let store = EngineStore(paths: paths)
+        #expect(store.installed() == [.wine1119, .wine1117])
+        #expect(store.defaultEngine() == .wine1119)
+        try store.makeDefault(.wine1117)
+        #expect(store.defaultEngine() == .wine1117)
+        #expect(Runner.listedTools(paths: paths) == ["notproton-tannin-1117", "notproton-tannin"])
+        // Building a runner again keeps its place in the list.
+        try Runner(paths: paths, spec: .wine1119).writeToolsLine()
+        #expect(store.defaultEngine() == .wine1117)
+    }
+
+    @Test func aGameFollowsTheDefaultUntilItIsPinned() throws {
+        let paths = try makeEngines([.wine1119, .wine1117])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let store = EngineStore(paths: paths)
+        let config = SteamConfig(paths: paths, steamIsRunning: { false })
+        #expect(store.pin(appID: "10") == nil)
+        #expect(store.engine(for: "10") == .wine1119)
+        try config.setCompatTool(appID: "10", tool: EngineSpec.wine1117.toolName)
+        #expect(store.pin(appID: "10") == .wine1117)
+        #expect(store.engine(for: "10") == .wine1117)
+        #expect(store.pinnedGames(.wine1117) == ["10"])
+        try config.setCompatTool(appID: "10", tool: nil)
+        #expect(store.pin(appID: "10") == nil)
+    }
+
+    @Test func aPinToAnEngineThatIsGoneFallsBackToTheDefault() throws {
+        let paths = try makeEngines([.wine1119])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        try SteamConfig(paths: paths, steamIsRunning: { false }).setCompatTool(appID: "10", tool: EngineSpec.wine1117.toolName)
+        let store = EngineStore(paths: paths)
+        #expect(store.pin(appID: "10") == .wine1117)
+        #expect(store.engine(for: "10") == .wine1119)
+    }
+
+    @Test func theDefaultTheNewestAndTheOnlyEngineCannotBeRemoved() throws {
+        let paths = try makeEngines([.wine1119, .wine1117])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let store = EngineStore(paths: paths)
+        #expect(throws: EngineStoreError.self) { try store.remove(.wine1119) }
+        try store.makeDefault(.wine1117)
+        #expect(throws: EngineStoreError.self) { try store.remove(.wine1117) }
+        #expect(store.installed().count == 2)
+    }
+}
+
+@Suite struct EnvironmentCopyTests {
+    private func makeEnvironment(_ paths: Paths, appID: String, save: String) throws -> URL {
+        let prefix = paths.steamData.appending(path: "steamapps/compatdata/\(appID)/pfx")
+        try FileManager.default.createDirectory(at: prefix, withIntermediateDirectories: true)
+        try save.write(to: prefix.appending(path: "save.txt"), atomically: true, encoding: .utf8)
+        return prefix.appending(path: "save.txt")
+    }
+
+    @Test func keepsTheNewestCopyAndPutsItBack() throws {
+        let paths = try makeEngines([.wine1119, .wine1117])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let copies = EnvironmentCopy(paths: paths)
+        #expect(copies.info(appID: "10") == nil)
+        #expect(throws: EnvironmentCopyError.self) { try copies.restore(appID: "10") }
+        // A game never started has nothing to copy, and that is not an error.
+        #expect(try copies.make(appID: "10", from: .wine1119, to: .wine1117) == nil)
+
+        let save = try makeEnvironment(paths, appID: "10", save: "first")
+        let when = Date(timeIntervalSince1970: 1_800_000_000)
+        try copies.make(appID: "10", from: .wine1119, to: .wine1117, now: when)
+        #expect(copies.info(appID: "10") == EnvironmentCopy.Info(made: when, fromWine: "11.19", toWine: "11.17"))
+        try "second".write(to: save, atomically: true, encoding: .utf8)
+        try copies.restore(appID: "10")
+        #expect(try String(contentsOf: save, encoding: .utf8) == "first")
+        // The copy is still there after it has been put back, and a later copy replaces it.
+        try "third".write(to: save, atomically: true, encoding: .utf8)
+        try copies.make(appID: "10", from: .wine1117, to: .wine1119, now: when.addingTimeInterval(60))
+        #expect(copies.info(appID: "10")?.fromWine == "11.17")
+        try copies.restore(appID: "10")
+        #expect(try String(contentsOf: save, encoding: .utf8) == "third")
+    }
+}
+
+@Suite struct GameMoveTests {
+    @Test func movingCopiesTheEnvironmentPinsTheGameAndRenamesItsLayerFiles() throws {
+        let paths = try makeEngines([.wine1119, .wine1117])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        let prefix = paths.steamData.appending(path: "steamapps/compatdata/10/pfx")
+        try FileManager.default.createDirectory(at: prefix, withIntermediateDirectories: true)
+        try "before".write(to: prefix.appending(path: "save.txt"), atomically: true, encoding: .utf8)
+        let config = SteamConfig(paths: paths, steamIsRunning: { false })
+        try config.setLaunchOptions(appID: "10", "NOTPROTON_RUNNER_VARIANT=tannin-dxmt MY_FLAG=1 %command%")
+        let store = EngineStore(paths: paths)
+        let mover = GameMove(paths: paths, steamIsRunning: { false })
+
+        // Refused while Steam runs, with nothing changed.
+        #expect(throws: SteamConfigError.self) { try GameMove(paths: paths, steamIsRunning: { true }).move(appID: "10", to: .wine1117) }
+        #expect(store.pin(appID: "10") == nil)
+        #expect(EnvironmentCopy(paths: paths).info(appID: "10") == nil)
+
+        try mover.move(appID: "10", to: .wine1117)
+        #expect(store.pin(appID: "10") == .wine1117)
+        #expect(config.launchOptions(appID: "10") == "NOTPROTON_RUNNER_VARIANT=tannin-dxmt-1117 MY_FLAG=1 %command%")
+        #expect(EnvironmentCopy(paths: paths).info(appID: "10")?.fromWine == "11.19")
+
+        // The game saves something on 11.17, then the copy is put back: the save and the Wine version return.
+        try "after".write(to: prefix.appending(path: "save.txt"), atomically: true, encoding: .utf8)
+        try mover.restore(appID: "10")
+        #expect(try String(contentsOf: prefix.appending(path: "save.txt"), encoding: .utf8) == "before")
+        #expect(store.pin(appID: "10") == nil)
+        #expect(config.launchOptions(appID: "10") == "NOTPROTON_RUNNER_VARIANT=tannin-dxmt MY_FLAG=1 %command%")
+    }
+
+    @Test func aGameCannotBeMovedToAnEngineThatIsNotInstalled() throws {
+        let paths = try makeEngines([.wine1119])
+        defer { try? FileManager.default.removeItem(at: paths.home) }
+        #expect(throws: EngineStoreError.self) { try GameMove(paths: paths, steamIsRunning: { false }).move(appID: "10", to: .wine1117) }
     }
 }

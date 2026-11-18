@@ -91,11 +91,16 @@ public struct SteamConfig: Sendable {
 
     /// Tells Steam to run this game with Tannin's runner (or clears that choice).
     public func setCompatTool(appID: String, enabled: Bool) throws {
+        try setCompatTool(appID: appID, tool: enabled ? Runner.toolName : nil)
+    }
+
+    /// Tells Steam which compatibility tool runs this game. Nil clears the choice, so the game uses the default.
+    public func setCompatTool(appID: String, tool: String?) throws {
         try edit(paths.steamConfig) { vdf in
             let path = Self.mappingPath + [appID]
-            if enabled {
+            if let tool {
                 vdf.set(.object([
-                    VDFPair("name", .string(Runner.toolName)),
+                    VDFPair("name", .string(tool)),
                     VDFPair("config", .string("")),
                     VDFPair("priority", .string("250")),
                 ]), at: path)
@@ -103,6 +108,15 @@ public struct SteamConfig: Sendable {
                 vdf.remove(at: path)
             }
         }
+    }
+
+    /// The tool chosen for each app that has one.
+    public func compatTools() -> [String: String] {
+        var result: [String: String] = [:]
+        for pair in (try? VDF.load(paths.steamConfig))?.value(at: Self.mappingPath)?.pairs ?? [] {
+            if let name = pair.value["name"]?.string, !name.isEmpty { result[pair.key] = name }
+        }
+        return result
     }
 
     public func compatTool(appID: String) -> String? {

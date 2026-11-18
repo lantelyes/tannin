@@ -17,19 +17,26 @@ public enum RunnerError: Error, CustomStringConvertible {
 /// The add-on's launch script is fixed, so the runner is laid out exactly where and how that script looks for it.
 public struct Runner: Sendable {
     public let paths: Paths
+    public let spec: EngineSpec
 
-    /// Identity the add-on knows this runner by. The tool name must start with "notproton".
-    public static let build = "tannin-1"
-    public static let toolName = "notproton-tannin"
+    /// The newest engine's identity, which is also what Tannin 0.2 and 0.3 installed.
+    public static let build = EngineSpec.newest.build
+    public static let toolName = EngineSpec.newest.toolName
     public static let flavor = "rosetta"
-    public static let display = "Tannin (Wine \(Pins.engineWine))"
+    public static let display = EngineSpec.newest.display
 
-    public init(paths: Paths = .live) { self.paths = paths }
+    public init(paths: Paths = .live, spec: EngineSpec = .newest) {
+        self.paths = paths
+        self.spec = spec
+    }
 
-    public var root: URL { paths.notproton.appending(path: "runners/crossover-\(Self.build)/CrossOver") }
+    public var root: URL { paths.notproton.appending(path: "runners/crossover-\(spec.build)/CrossOver") }
     public var toolsFile: URL { paths.notproton.appending(path: "tools") }
-    public var defaultsFile: URL { paths.notproton.appending(path: "defaults-override-\(Self.build)-\(Self.flavor)") }
-    var stagedNtdll: URL { paths.notproton.appending(path: "bridge/wine/\(Self.build)") }
+    public var defaultsFile: URL { paths.notproton.appending(path: "defaults-override-\(spec.build)-\(Self.flavor)") }
+    var stagedNtdll: URL { paths.notproton.appending(path: "bridge/wine/\(spec.build)") }
+
+    /// Whether the runner's own files are there. Says nothing about whether they are right; `verify` does.
+    public var exists: Bool { FileManager.default.fileExists(atPath: root.appending(path: "lib/wine").path) }
 
     /// Which ntdll files get the Steam bridge detour.
     ///
@@ -42,7 +49,9 @@ public struct Runner: Sendable {
 
     static let layersCheck = "Graphics layers"
 
-    public static var toolsLine: String { "\(toolName)\t\(build)\t\(flavor)\t\(display)" }
+    public static var toolsLine: String { toolsLine(for: .newest) }
+    public static func toolsLine(for spec: EngineSpec) -> String { "\(spec.toolName)\t\(spec.build)\t\(flavor)\t\(spec.display)" }
+    public var toolsLine: String { Self.toolsLine(for: spec) }
 
     /// Settings every game starts with unless its own launch options say otherwise.
     public static let defaults = ["WINEMSYNC=1", "ROSETTA_ADVERTISE_AVX=1"]
@@ -50,7 +59,7 @@ public struct Runner: Sendable {
     /// Builds the runner from the installed engine, the patched ntdll and the staged bridge.
     public func build(patch: NtdllPatch) throws {
         let fm = FileManager.default
-        let engine = Engine(paths: paths)
+        let engine = Engine(paths: paths, spec: spec)
         guard engine.isInstalled else { throw RunnerError.engineMissing }
         let missing = NotProtonKit(paths: paths).missingStagedFiles()
         guard missing.isEmpty else { throw RunnerError.kitIncomplete(missing) }
@@ -86,7 +95,7 @@ public struct Runner: Sendable {
                     root.appending(path: "lib/wine/x86_64-unix/lsteamclient.so"))
 
         // DXMT for Direct3D 10 and 11. The 64-bit half makes way when D3DMetal is linked in.
-        let layers = LayerStore(paths: paths)
+        let layers = LayerStore(paths: paths, spec: spec)
         for arch in ["x86_64", "i386"] { try layers.putDXMT(into: root, arch: arch) }
         try layers.prepare()
 
@@ -94,14 +103,34 @@ public struct Runner: Sendable {
         try (Self.defaults.joined(separator: "\n") + "\n").write(to: defaultsFile, atomically: true, encoding: .utf8)
     }
 
+    /// The tools the add-on is told about, in order. The first is what a game with no choice of its own gets.
+    public static func listedTools(paths: Paths) -> [String] {
+        let text = (try? String(contentsOf: paths.notproton.appending(path: "tools"), encoding: .utf8)) ?? ""
+        return text.split(separator: "\n").compactMap { $0.split(separator: "\t").first.map(String.init) }
+    }
+
     /// Lists this runner in the file the add-on reads at Steam start, keeping any other lines.
-    func writeToolsLine() throws {
+    /// A runner already listed keeps its place; a new one goes last, so it does not become the default by itself.
+    func writeToolsLine(first: Bool = false) throws {
         var lines: [String] = []
         if let existing = try? String(contentsOf: toolsFile, encoding: .utf8) {
-            lines = existing.split(separator: "\n").map(String.init).filter { !$0.hasPrefix("\(Self.toolName)\t") }
+            lines = existing.split(separator: "\n").map(String.init)
         }
-        lines.insert(Self.toolsLine, at: 0)
+        let place = lines.firstIndex { $0.hasPrefix("\(spec.toolName)\t") }
+        lines.removeAll { $0.hasPrefix("\(spec.toolName)\t") }
+        lines.insert(toolsLine, at: first ? 0 : min(place ?? lines.count, lines.count))
+        try FileManager.default.createDirectory(at: toolsFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         try (lines.joined(separator: "\n") + "\n").write(to: toolsFile, atomically: true, encoding: .utf8)
+    }
+
+    /// Makes this runner the one games use unless they are given another. Takes effect when Steam next starts.
+    public func makeDefault() throws { try writeToolsLine(first: true) }
+
+    /// Takes this runner out of the add-on's list.
+    func removeToolsLine() throws {
+        guard let existing = try? String(contentsOf: toolsFile, encoding: .utf8) else { return }
+        let lines = existing.split(separator: "\n").map(String.init).filter { !$0.hasPrefix("\(spec.toolName)\t") }
+        try (lines.joined(separator: "\n") + (lines.isEmpty ? "" : "\n")).write(to: toolsFile, atomically: true, encoding: .utf8)
     }
 
     /// Checks everything the launch script will look for. Changes nothing.
@@ -122,7 +151,7 @@ public struct Runner: Sendable {
             ? Check("Runner files", .ok, "All \(required.count) present in \(root.path)")
             : Check("Runner files", .broken, "Missing: \(missing.joined(separator: ", "))"))
 
-        for pin in NtdllPatch.pins {
+        for pin in NtdllPatch.pins(for: spec) {
             let live = root.appending(path: "lib/wine/\(pin.arch)-windows/ntdll.dll")
             let staged = stagedNtdll.appending(path: "\(pin.arch)-windows/ntdll.dll")
             let hash = try? Hashing.sha256(of: live)
@@ -159,12 +188,12 @@ public struct Runner: Sendable {
             : Check("Kit", .broken, "Missing: \(kitMissing.joined(separator: ", "))"))
 
         let tools = (try? String(contentsOf: toolsFile, encoding: .utf8)) ?? ""
-        checks.append(tools.split(separator: "\n").first.map(String.init) == Self.toolsLine
-            ? Check("Tool listing", .ok, Self.toolsLine.replacingOccurrences(of: "\t", with: " | "))
-            : Check("Tool listing", .broken, "\(toolsFile.path) does not list \(Self.toolName) first."))
+        checks.append(tools.split(separator: "\n").map(String.init).contains(toolsLine)
+            ? Check("Tool listing", .ok, toolsLine.replacingOccurrences(of: "\t", with: " | "))
+            : Check("Tool listing", .broken, "\(toolsFile.path) does not list \(spec.toolName)."))
 
         let gptk = root.appending(path: "lib64/apple_gptk/external/libd3dshared.dylib")
-        let layers = LayerStore(paths: paths)
+        let layers = LayerStore(paths: paths, spec: spec)
         if missing.isEmpty {
             let wanted = exists(gptk) ? ["i386"] : ["x86_64", "i386"]
             let without = wanted.filter { !layers.runnerHasDXMT(root, arch: $0) }

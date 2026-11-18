@@ -93,8 +93,8 @@ public struct GameSettings: Sendable, Equatable {
     /// Variables Tannin owns in a game's launch options. Anything else the user typed there is kept.
     static let ownedKeys = [
         "CX_ACTIVE_GRAPHICS_BACKEND", "D3DM_SUPPORT_DXR", "D3DM_ENABLE_METALFX", "D3DM_MAX_FPS", "MTL_HUD_ENABLED", "D3DM_MTL4",
-        LayerStore.dxvkPlugin, layerMarkKey, "DXMT_METALFX_SPATIAL_SWAPCHAIN", "DXVK_ASYNC", "DXVK_FRAME_RATE",
-    ]
+        layerMarkKey, "DXMT_METALFX_SPATIAL_SWAPCHAIN", "DXVK_ASYNC", "DXVK_FRAME_RATE",
+    ] + EngineSpec.all.map(\.dxvkPlugin)
 
     private static func split(_ word: String) -> (key: String, value: String)? {
         let parts = word.split(separator: "=", maxSplits: 1).map(String.init)
@@ -129,8 +129,8 @@ public struct GameSettings: Sendable, Equatable {
             case "D3DM_MTL4": metal4 = value == "1"
             case "DXVK_ASYNC": backgroundEffects = value == "1"
             case Self.variantKey: variant = value
-            case LayerStore.dxvkPlugin: dxvkOn = value == "1"
             case Self.layerMarkKey: marked = value
+            case let key where EngineSpec.all.contains { $0.dxvkPlugin == key }: dxvkOn = value == "1"
             case Self.dxmtConfigKey:
                 for clause in Self.clauses(value) {
                     if clause.key == Self.dxmtFrameRate, let cap = Int(clause.value), cap > 0 { frameCap = cap }
@@ -139,9 +139,10 @@ public struct GameSettings: Sendable, Equatable {
             default: break
             }
         }
-        if variant == LayerStore.dxmtVariant {
+        // Each engine has its own names for these; any of them means the same layer.
+        if let variant, EngineSpec.all.contains(where: { $0.dxmtVariant == variant }) {
             layer = .dxmt
-        } else if variant == LayerStore.plainVariant, dxvkOn {
+        } else if let variant, EngineSpec.all.contains(where: { $0.plainVariant == variant }), dxvkOn {
             layer = .dxvk
         } else if marked == "d3dmetal" {
             layer = .d3dMetal
@@ -153,8 +154,9 @@ public struct GameSettings: Sendable, Equatable {
         String(format: "%.2f", value).replacingOccurrences(of: #"0$"#, with: "", options: .regularExpression)
     }
 
-    /// The assignments for this layer. `foreignClauses` are parts of the user's own DXMT_CONFIG, which are kept.
-    func assignments(foreignClauses: [String] = []) -> [String] {
+    /// The assignments for this layer on one engine. `foreignClauses` are parts of the user's own DXMT_CONFIG,
+    /// which are kept.
+    func assignments(foreignClauses: [String] = [], engine: EngineSpec = .newest) -> [String] {
         var result: [String] = []
         let forD3DMetal = layer == .automatic || layer == .d3dMetal
         let forDXMT = layer == .automatic || layer == .dxmt
@@ -163,8 +165,8 @@ public struct GameSettings: Sendable, Equatable {
         switch layer {
         case .automatic: break
         case .d3dMetal: result.append("\(Self.layerMarkKey)=d3dmetal")
-        case .dxmt: result.append("\(Self.variantKey)=\(LayerStore.dxmtVariant)")
-        case .dxvk: result += ["\(Self.variantKey)=\(LayerStore.plainVariant)", "\(LayerStore.dxvkPlugin)=1"]
+        case .dxmt: result.append("\(Self.variantKey)=\(engine.dxmtVariant)")
+        case .dxvk: result += ["\(Self.variantKey)=\(engine.plainVariant)", "\(engine.dxvkPlugin)=1"]
         }
         if forD3DMetal {
             if let rayTracing { result.append("D3DM_SUPPORT_DXR=\(rayTracing ? 1 : 0)") }
@@ -195,7 +197,8 @@ public struct GameSettings: Sendable, Equatable {
 
     /// Merges these settings into existing launch options: Tannin's variables are replaced, everything else stays.
     /// With nothing to set and nothing of the user's own, the result is empty, so Steam's field is left clear.
-    public func launchOptions(merging existing: String = "") -> String {
+    /// `engine` is the Wine engine the game runs on, whose layer files the options have to name.
+    public func launchOptions(merging existing: String = "", engine: EngineSpec = .newest) -> String {
         var foreignClauses: [String] = []
         var words: [String] = []
         for word in Self.words(existing) {
@@ -203,7 +206,7 @@ public struct GameSettings: Sendable, Equatable {
             if Self.ownedKeys.contains(key) { continue }
             if key == Self.variantKey {
                 // The user's own runner variant stays unless the chosen layer needs the place.
-                let ours = [LayerStore.dxmtVariant, LayerStore.plainVariant].contains(value)
+                let ours = EngineSpec.all.contains { $0.dxmtVariant == value || $0.plainVariant == value }
                 if ours || layer == .dxmt || layer == .dxvk { continue }
             }
             if key == Self.dxmtConfigKey {
@@ -214,7 +217,7 @@ public struct GameSettings: Sendable, Equatable {
             }
             words.append(word)
         }
-        let own = assignments(foreignClauses: foreignClauses)
+        let own = assignments(foreignClauses: foreignClauses, engine: engine)
         if own.isEmpty, words.allSatisfy({ $0 == "%command%" }) { return "" }
         if !words.contains("%command%") { words.append("%command%") }
         return (own + words).joined(separator: " ")
