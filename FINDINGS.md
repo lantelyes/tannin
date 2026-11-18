@@ -172,3 +172,47 @@ Not run yet. Waiting on the Game Porting Toolkit disk image and the user at the 
 - **Not built yet:** the first-run setup checklist with download progress (the CLI does setup today), games that
   are not installed, the unsupported-game state, engine update checks, notifications, launch at login.
 - The game settings screen shows only D3DMetal as the graphics layer, because that is the only one wired up.
+
+## 2026-11-18: the app rebuilt in the Source List design
+
+The first version's look was rejected as not Mac-native. The user chose option 2, "Source List", with the blue
+accent, from https://claude.ai/artifact/GbChM4R4nfyvMvnVh2mTXX. `Sources/TanninApp` was rebuilt from system controls
+only; the section above describes an app that no longer exists.
+
+**What the core gained**
+
+- **Steam's library, read from Steam's own files.** `appcache/appinfo.vdf` on this Mac is format 29 (magic
+  `0x07564429`, 716 apps). `tannin game list --all` gives 1 installed Windows game (LEGO Builder's Journey, 64-bit
+  by its PE header) and 102 not installed. "Not installed" means: type "game", no `macos` platform, a folder in
+  `appcache/librarycache`, no app manifest. That rule has not been compared with Steam's own library list.
+  A game with a Mac build it cannot use (Spec Ops: The Line, 32-bit Mac app) is not listed until it is installed.
+- **Artwork.** Steam keeps images either directly in `librarycache/<appid>/` or one folder down under a hash; the
+  file names are the same. With both handled, 99 of 102 not-installed games have a banner.
+- **Setup without Python.** The x86_64 ntdll patch is three byte runs (9 + 753 + 31 bytes) in
+  `NtdllRecipe.swift`. A test applies it to the installed engine's clean ntdll and gets the pinned patched hash
+  `77ab70fe…efaa`. `tannin setup` prints the six steps; all six read "done" on this Mac.
+  The live runner was not rebuilt with the new code path (it is in use), so `Runner.build` through the recipe has
+  been run only in that test, not end to end.
+- **Downloads** report progress and can be cancelled, keeping the `.part` file; tested against `file://` pins,
+  including resuming a partial file. Not tried against the real 479 MB engine download.
+
+**What the app is now**
+
+- Minimum macOS 26. Sidebar: Windows Games, a collapsed "Not Installed" section with its count, Engine, Logs,
+  status at the bottom, search over both game sections. A game's page has its Steam artwork under the toolbar and
+  sidebar, Play or Install in Steam, a status line, Preset, and grouped settings. Engine and Logs as drawn. A
+  "Set Up Tannin" window with the six steps opens at launch when the engine, toolkit or bridge is missing, and
+  from the app menu at any time.
+- **Checked by looking at real window captures** (`scripts/snapshots.sh <folder>`, which uses `screencapture`
+  and so needs Screen Recording permission for the terminal): the game page with real data, and with prepared
+  data the Engine, Logs, empty, not-installed, 32-bit notice, Steam-updated, Add Steam Play sheet and setup
+  screens, each in light and dark. The app's own drawing of its window (`cacheDisplay`) cannot render the glass
+  sidebar and toolbar, which is why the system capture is used.
+- **Differences from the drawings, on purpose:** Graphics Layer is plain text, not a pop-up, because D3DMetal is
+  the only choice. "Check for Tannin Update" and the Wine row's "Check for Updates" are not there; the
+  Steam-updated note offers Show Logs and Remove Steam Play instead. "Save Changes" appears only when something
+  changed. The Game Porting Toolkit cannot be chosen while a download is running.
+- **Not exercised yet:** nobody has clicked Play, Install in Steam, Save Changes, the freeze switch, Add or Remove
+  Steam Play, Replace, or any setup step in the new app. Whether Steam installs a not-installed game without the
+  game first being assigned to Tannin's runner is still unknown. The menu bar item and the Settings window were
+  not looked at.
