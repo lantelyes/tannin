@@ -17,7 +17,7 @@ Wine engine with Apple's D3DMetal.
 
 ## Install
 
-1. Download `Tannin-<version>.zip` from the Releases page and open it.
+1. Download `Tannin-<version>.zip` from the [Releases page](https://github.com/lantelyes/tannin/releases) and open it.
 2. Move **Tannin** to your Applications folder and open it.
 3. macOS will say it could not verify Tannin, because this build is not signed with an Apple developer
    certificate. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**.

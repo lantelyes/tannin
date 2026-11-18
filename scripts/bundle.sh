@@ -29,7 +29,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <dict>
   <key>CFBundleName</key><string>Tannin</string>
   <key>CFBundleDisplayName</key><string>Tannin</string>
-  <key>CFBundleIdentifier</key><string>local.tannin.Tannin</string>
+  <key>CFBundleIdentifier</key><string>io.github.lantelyes.Tannin</string>
   <key>CFBundleExecutable</key><string>Tannin</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>

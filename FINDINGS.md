@@ -176,7 +176,7 @@ Not run yet. Waiting on the Game Porting Toolkit disk image and the user at the 
 ## 2026-11-18: the app rebuilt in the Source List design
 
 The first version's look was rejected as not Mac-native. The user chose option 2, "Source List", with the blue
-accent, from https://claude.ai/artifact/GbChM4R4nfyvMvnVh2mTXX. `Sources/TanninApp` was rebuilt from system controls
+accent, from the design canvas. `Sources/TanninApp` was rebuilt from system controls
 only; the section above describes an app that no longer exists.
 
 **What the core gained**
