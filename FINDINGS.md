@@ -368,3 +368,20 @@ their feed from `http://localhost:8765/`, served from a scratch folder on this M
 - **Not shown yet:** an installed 0.2.0 finding and installing an update from the live feed. That is what 0.2.1
   is for. The copy in `/Applications` on this Mac is still the local test build.
 
+## 2026-11-18: 0.2.1 released, and the live update shown to work
+
+- The user ran `scripts/release.sh 0.2.1`. Checked from the outside afterwards: the public download matches its
+  published hash, the signature and length in the live feed are right for it, and the app inside is 0.2.1 with the
+  same signing requirement. The website's Download button and What's New show 0.2.1.
+- The 0.1.0 release was deleted on the user's word (its tag stays; its old download link answers 404).
+- **The proof.** The published 0.2.0, as downloaded from GitHub, was put in `/Applications` in place of the local
+  test build and opened. With no stored last-check time it looked at https://lantelyes.github.io/tannin/appcast.xml
+  by itself within a few seconds and offered 0.2.1 with its notes (a list per version, 0.2.1 then 0.2.0). Install
+  Update, then Install and Relaunch, left `/Applications/Tannin.app` at 0.2.1, running, validly signed with the same
+  requirement. So an installed Tannin updates itself from the real website.
+- If the "Ready to Install" window is closed without installing, Check for Updates… brings it straight back.
+- **Not covered by that proof:** the 0.2.0 was copied into Applications from the terminal, so it carried no
+  download mark. Open Anyway and the move question were shown to work with a local test build, not with the
+  published zip, and the move has never replaced a copy that was already in Applications. Still open as before:
+  whether the permission to change Steam survives an update, and anything on a second Mac.
+
