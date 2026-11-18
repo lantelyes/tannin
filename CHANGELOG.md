@@ -3,7 +3,7 @@
 Every release, newest first, in plain words. `scripts/release.sh` refuses to make a release that
 has no section here, and the same text becomes the notes shown in the update window.
 
-## 0.4.0 (not released yet)
+## 0.4.0 (18 November 2026)
 
 - **A second Wine version.** Wine 11.17 can be installed beside 11.19 from the Engine page, with
   one button. Nothing changes for your games until you say so.
