@@ -467,3 +467,14 @@ nothing above has rendered a frame, and frame cap, overlay and the DXMT and DXVK
   far only worked as native files in a Windows environment. Direct3D 12 under the DXMT variant was not reached.
 - This Mac locks its screen after a short idle time, twice during these tests. A locked screen stops every capture
   and click; only the user can unlock it.
+- **DXVK, kept on the user's word, runs as native files only.** Marked as a builtin, DXVK's `d3d11.dll` does not
+  load at all (error 1114), which is what the hang above was. What works, through the add-on's launch script: a
+  variant that puts Wine's own `dxgi`, `d3d10`, `d3d11`, `d3d12` and `d3d12core` back in place of D3DMetal's
+  (`tannin-plain` in the test), plus a plugin descriptor in `notproton/plugins/` with `stage = <folder holding
+  DXVK's d3d11.dll and d3d10core.dll>` and `overrides = d3d11,d3d10core=n,b`. With
+  `NOTPROTON_RUNNER_VARIANT=tannin-plain NOTPROTON_TANNIN_DXVK=1` the 64-bit probe got Direct3D 11 from DXVK
+  (feature level 11_0, Vulkan loaded, `d3d11.dll` native). The plugin stages into `system32` only, so this is
+  64-bit only; a 32-bit program under the same options gets whatever the runner's 32-bit side holds.
+- Switching away from DXVK is clean: with the options removed, the same environment gave D3DMetal again, and DXMT
+  with the DXMT variant, although DXVK's two files were still in `system32`. Without the override they are not
+  used.
