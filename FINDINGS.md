@@ -252,3 +252,28 @@ which is a manual step. With the `.icns` alone, macOS shows the default appearan
   and `spctl` rejects it, which is the expected "Open Anyway" case described in the README. Opening the downloaded
   copy by hand, and everything on a second Mac, is still untried.
 - The app's bundle identifier is now `io.github.lantelyes.Tannin`.
+
+## 2026-11-18: this Mac reset to a fresh state, by hand
+
+Done so the release can be tried from nothing. There is no reset command yet; these are the steps a future
+"Reset" in Tannin has to cover.
+
+1. The games were uninstalled in Steam itself while Steam Play was still on (`steam://uninstall/<appid>` opens
+   Steam's own dialog). Steam removed the game's Windows environment (`compatdata/<appid>`) along with it.
+2. `tannin steam disable --yes` put back Valve's Steam.app (team `MXGJJ98X76`, signature valid, no
+   `DYLD_INSERT_LIBRARIES`) and removed the update freeze. This is the second time that path has worked.
+3. Moved to the Trash: `~/Library/Application Support/Tannin`, `~/Library/Application Support/notproton`,
+   `Steam/compatibilitytools.d/notproton-tannin`, `Steam/steamapps/compatdata/notproton-template`.
+4. Two leftovers of the Steam add-on that were not on the list beforehand, also trashed:
+   `Steam/steamapps/compatdata/.notproton-template.lock`, and `Steam/steamapps/common/Steam.dll`, a symlink the
+   add-on makes to Steam's own `legacycompat/Steam.dll`.
+5. Tannin's settings: `defaults delete` empties a domain but leaves an empty `.plist` behind in
+   `~/Library/Preferences`; those were trashed too. `tccutil reset All <bundle id>` only works for an identifier
+   macOS still knows an app for.
+
+Afterwards `tannin setup` shows Rosetta and Steam done and everything else to do, no Windows game is installed, and
+`compatdata` and `compatibilitytools.d` are empty.
+
+Also learned: no game was ever assigned to Tannin's runner in Steam's `config.vdf`, yet LEGO Builder's Journey
+installed and ran. The add-on makes Windows games installable without a per-game compatibility setting, so
+"Install in Steam" does not need to write one.
