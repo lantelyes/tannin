@@ -134,7 +134,7 @@ final class ProgressLog: @unchecked Sendable {
         #expect(setup.state(of: .rosetta) == .ready)
         #expect(setup.state(of: .steam) == .ready)
         #expect(setup.state(of: .engine) == .ready)
-        #expect(setup.state(of: .bridge) == .waiting("Needs the Wine engine first"))
+        #expect(setup.state(of: .bridge) == .waiting("Needs Wine first"))
         #expect(setup.state(of: .steamPlay) == .waiting("Needs the steps above first"))
         #expect(!setup.isReadyForSteamPlay)
 
@@ -164,9 +164,9 @@ final class ProgressLog: @unchecked Sendable {
     private typealias States = [Setup.Step: Setup.State]
 
     private let bare: States = [.rosetta: .ready, .steam: .done("In Applications"), .engine: .ready,
-                                .bridge: .waiting("Needs the Wine engine first"), .steamPlay: .waiting("Needs the steps above first")]
+                                .bridge: .waiting("Needs Wine first"), .steamPlay: .waiting("Needs the steps above first")]
     private let usual: States = [.rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .ready,
-                                 .bridge: .waiting("Needs the Wine engine first"), .steamPlay: .waiting("Needs the steps above first")]
+                                 .bridge: .waiting("Needs Wine first"), .steamPlay: .waiting("Needs the steps above first")]
     private let ready: States = [.rosetta: .done("Installed"), .steam: .done("In Applications"), .engine: .done("Wine 11.19"),
                                  .bridge: .done("NotProton 1.2.6"), .steamPlay: .ready]
 
@@ -269,16 +269,16 @@ final class ProgressLog: @unchecked Sendable {
         #expect(work.received == 312_000_000)
 
         let stopped = SetupFailure(DownloadError.allSourcesFailed(name: "x", lastError: "curl: (6)"), during: paused)
-        #expect(stopped.message == "The download stopped. Check your connection.")
+        #expect(stopped.message == "The download stopped. Check your internet connection.")
         #expect(phase(usual, failure: stopped) == .failed(stopped.message, work))
 
         // A damaged file was removed, so nothing of it is left to count.
         let damaged = SetupFailure(DownloadError.wrongHash(name: "x", expected: "a", actual: "b"), during: running)
-        #expect(damaged.message == "The download did not arrive whole, so it was removed.")
+        #expect(damaged.message == "The download was incomplete, so Tannin deleted it. Try again.")
         #expect(phase(usual, failure: damaged) == .failed(damaged.message, SetupWork(stage: .engineDownload, fraction: 0, received: nil, total: nil)))
 
         let rosetta = SetupFailure(Cancelled(), during: SetupProgress(step: .rosetta))
-        #expect(rosetta.message == "macOS could not install Rosetta. Check your connection.")
+        #expect(rosetta.message == "macOS couldn’t install Rosetta. Check your internet connection.")
 
         let other = SetupFailure(SteamAddonError.steamMissing, during: SetupProgress(step: .bridge))
         #expect(other.message == SteamAddonError.steamMissing.description)
@@ -291,7 +291,7 @@ final class ProgressLog: @unchecked Sendable {
         #expect(phase(ready) == .readyForSteamPlay)
         #expect(phase(ready, steamPlay: .adding) == .addingSteamPlay)
         #expect(phase(ready, steamPlay: SteamPlayAdd(SteamAddonError.notPermitted)) == .steamPlayRefused)
-        #expect(phase(ready, steamPlay: SteamPlayAdd(SteamAddonError.steamStillRunning)) == .steamPlayFailed("Steam did not quit. Quit Steam and try again."))
+        #expect(phase(ready, steamPlay: SteamPlayAdd(SteamAddonError.steamStillRunning)) == .steamPlayFailed("Steam didn’t quit. Quit it yourself and try again."))
 
         var foreign = ready
         foreign[.steamPlay] = .waiting("Another tool is loaded into Steam")

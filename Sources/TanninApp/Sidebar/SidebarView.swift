@@ -40,7 +40,7 @@ struct SidebarView: View {
                     GameRow(game: game).tag(SidebarSelection.game(game.appID))
                 }
                 if installed.isEmpty {
-                    Text(isSearching ? "No matches" : "None yet")
+                    Text(isSearching ? "No results" : "None installed")
                         .foregroundStyle(.secondary)
                         .selectionDisabled()
                 }

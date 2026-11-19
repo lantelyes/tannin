@@ -51,7 +51,7 @@ public struct TanninStatus: Sendable, Equatable {
     public var headline: Headline {
         guard steamInstalled else { return .steamMissing }
         var missing = runnerProblems
-        if !engineInstalled { missing.insert("Wine engine is not installed", at: 0) }
+        if !engineInstalled { missing.insert("Wine isn’t installed", at: 0) }
         if !missing.isEmpty { return .setupIncomplete(missing) }
         switch steamPlay {
         case .off: return .steamPlayOff

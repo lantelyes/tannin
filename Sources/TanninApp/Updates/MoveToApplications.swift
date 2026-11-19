@@ -8,7 +8,7 @@ import TanninCore
 @MainActor
 enum MoveToApplications {
     private struct LocationUnknown: Error, CustomStringConvertible {
-        let description = "macOS would not say where this copy of Tannin is."
+        let description = "Tannin couldn’t find where it’s stored."
     }
 
     private struct AlreadyOpenThere: Error, CustomStringConvertible {
@@ -33,7 +33,7 @@ enum MoveToApplications {
         let location = AppLocation.original(of: bundle.bundleURL) ?? bundle.bundleURL
         let alert = NSAlert()
         alert.messageText = "Move Tannin to your Applications folder?"
-        alert.informativeText = "\(place(of: location)) It can only update itself from Applications."
+        alert.informativeText = "\(place(of: location)) It needs to be in Applications to update itself."
         alert.addButton(withTitle: "Move to Applications Folder")
         alert.addButton(withTitle: "Not Now")
         return alert
@@ -85,8 +85,8 @@ enum MoveToApplications {
     private static func report(_ problem: String) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Tannin couldn't move itself"
-        alert.informativeText = "\(problem)\n\nNothing was changed. You can quit Tannin and drag it into your Applications folder yourself."
+        alert.messageText = "Tannin couldn’t move itself"
+        alert.informativeText = "\(problem)\n\nQuit Tannin and drag it to the Applications folder yourself."
         alert.runModal()
     }
 }

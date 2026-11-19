@@ -7,7 +7,7 @@ public enum SetupArtError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .notFetched(name, lastError): "Could not fetch the cover of \(name). \(lastError)"
+        case let .notFetched(name, lastError): "Couldn’t download the cover for \(name). \(lastError)"
         }
     }
 }
@@ -140,7 +140,7 @@ public struct SetupArt: Sendable {
                 continue
             }
             guard Self.isCover(partial) else {
-                lastError = "What \(source) sent is not a cover picture."
+                lastError = "\(source) didn’t return a cover image."
                 continue
             }
             try? fm.removeItem(at: final)

@@ -11,15 +11,15 @@ public enum SteamAddonError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .steamMissing: return "Steam.app was not found in Applications."
-        case .kitMissing: return "The Steam bridge is not installed yet. Finish setup first (in the app, Set Up Tannin; on the command line, tannin kit install)."
+        case .steamMissing: return "Steam isn’t in the Applications folder."
+        case .kitMissing: return "The Steam bridge isn’t installed yet. Finish setup first, in Set Up Tannin or with tannin kit install."
         case let .foreignLibrary(value):
-            return "Steam is already set to load something else (\(value)). Tannin will not overwrite it. Remove the other tool first."
+            return "Another tool has already modified Steam (\(value)). Remove it before adding Steam Play."
         case .notPermitted:
-            return "macOS did not let Tannin change Steam.app. In System Settings > Privacy & Security > App Management, allow Tannin (or the terminal app, if you ran the command line tool), then try again."
-        case .steamStillRunning: return "Steam did not quit. Quit Steam and try again."
-        case let .signingFailed(detail): return "Signing Steam failed: \(detail). Remove Steam Play to put Steam back as Valve ships it."
-        case let .restoreNotValve(detail): return "The downloaded Steam.app is not signed by Valve (\(detail)). Nothing was replaced."
+            return "macOS blocked Tannin from changing Steam. In System Settings, go to Privacy & Security > App Management and turn on Tannin (or your terminal app, if you used the command line tool). Then try again."
+        case .steamStillRunning: return "Steam didn’t quit. Quit it yourself and try again."
+        case let .signingFailed(detail): return "Tannin couldn’t sign Steam: \(detail). Remove Steam Play to restore Valve’s original Steam."
+        case let .restoreNotValve(detail): return "The downloaded Steam.app isn’t signed by Valve (\(detail)), so Tannin didn’t replace anything."
         }
     }
 }
@@ -101,11 +101,11 @@ public struct SteamAddon: Sendable {
     /// The changes `enable` makes, in order, for showing to the user before anything happens.
     public func enablePlan() -> [String] {
         [
-            "Quit Steam if it is running.",
+            "Quit Steam if it's running.",
             "Copy the add-on to \(installedLibrary.path)",
             "Add two keys to \(paths.steamInfoPlist.path) (a backup goes to \(plistBackup.path))",
-            "Sign Steam.app again on this Mac (Valve's signature is replaced).",
-            "Reset Steam's Accessibility and input-monitoring permissions; macOS will ask for them again.",
+            "Re-sign Steam.app on this Mac (Valve's signature is replaced).",
+            "Reset Steam's Accessibility and input-monitoring permissions. macOS will ask for them again.",
             "Re-register Steam.app with macOS.",
         ]
     }
@@ -180,7 +180,7 @@ public struct SteamAddon: Sendable {
 
     public func disablePlan() -> [String] {
         [
-            "Quit Steam if it is running.",
+            "Quit Steam if it's running.",
             "Download Steam.app from Valve (\(Pins.steamBundle.name)) and check its SHA-256.",
             "Check that copy is signed by Valve (team \(Pins.valveTeamID)).",
             "Move the current Steam.app to \(paths.backups.path) and put Valve's copy in its place.",

@@ -7,9 +7,9 @@ public enum FixedWindowError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .noEnvironment: return "This game has no Windows environment yet. It gets one the first time it starts."
-        case .gameRunning: return "The game is running. Quit it first, then try again."
-        case .engineMissing: return "The Wine engine this game uses is not installed."
+        case .noEnvironment: return "This game doesn’t have a Windows environment yet. Steam creates one the first time you play it."
+        case .gameRunning: return "Quit the game, then try again."
+        case .engineMissing: return "The Wine version this game uses isn’t installed."
         }
     }
 }

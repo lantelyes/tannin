@@ -8,7 +8,7 @@ struct SteamPlayView: View {
     @State private var freeze = false
     @State private var isConfirmingRemoval = false
 
-    static let removalMessage = "Steam quits and is put back exactly as Valve ships it. Your games, saves and Steam account are not touched. Windows games stop being playable until you add Steam Play again."
+    static let removalMessage = "Steam will quit and Valve’s original version will be restored. Windows games won’t run until you add Steam Play again. Your games, saves, and account aren’t affected."
 
     var body: some View {
         Group {
@@ -24,7 +24,7 @@ struct SteamPlayView: View {
                 }
                 .formStyle(.grouped)
             } else {
-                ProgressView("Checking this Mac…")
+                ProgressView("Checking Steam…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
@@ -75,7 +75,7 @@ struct SteamPlayView: View {
             .disabled(model.isBusy)
             bridge(status)
         } footer: {
-            Text("Removing Steam Play puts Steam back exactly as Valve ships it. Your games, saves and Steam account are not touched.")
+            Text("Removing Steam Play restores Valve’s original Steam. Your games, saves, and account aren’t affected.")
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -84,7 +84,7 @@ struct SteamPlayView: View {
         switch status.steamPlay {
         case .on: status.addonLoaded == false ? "Steam Play is off" : "Steam Play is on"
         case .off: "Steam Play is off"
-        case .foreign: "Another tool is loaded into Steam"
+        case .foreign: "Another tool has modified Steam"
         }
     }
 
@@ -97,15 +97,15 @@ struct SteamPlayView: View {
     }
 
     private func steamPlayCaption(_ status: TanninStatus) -> String {
-        let build = status.steamBuild.map { " Steam build \($0)." } ?? ""
+        let build = status.steamBuild.map { " Build \($0)." } ?? ""
         switch status.steamPlay {
-        case .off: return "Steam is as Valve ships it." + build
-        case let .foreign(value): return "Tannin will not replace it. Remove the other tool first. (\(value))"
+        case .off: return "Steam is unmodified." + build
+        case let .foreign(value): return "Tannin won’t replace it. Remove the other tool first. (\(value))"
         case .on:
             switch status.addonLoaded {
-            case true?: return "Loaded the last time Steam started." + build
-            case false?: return "Steam updated itself, so Steam Play is off until Tannin supports the new build." + build
-            case nil: return "Not loaded yet. It loads the next time Steam starts." + build
+            case true?: return "Loaded when Steam last started." + build
+            case false?: return "Steam updated to a build Tannin doesn’t support yet, so Steam Play is off." + build
+            case nil: return "Takes effect the next time Steam starts." + build
             }
         }
     }
@@ -115,14 +115,14 @@ struct SteamPlayView: View {
             if !status.engineInstalled {
                 StateLabel("Not installed", .pending)
             } else if status.runnerProblems.isEmpty {
-                StateLabel("In place", .ok)
+                StateLabel("Installed", .ok)
             } else {
                 StateLabel("Needs attention", .warning)
             }
         } label: {
             Text("Steam Bridge \(status.bridgeVersion)")
             Text(status.runnerProblems.isEmpty || !status.engineInstalled
-                ? "Lets games talk to Steam. Built on the NotProton project."
+                ? "Lets games talk to Steam. Based on NotProton."
                 : status.runnerProblems.joined(separator: " "))
         }
     }

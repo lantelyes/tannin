@@ -31,25 +31,25 @@ struct AddD3DMetalSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(present == nil ? "Add D3DMetal" : "Replace D3DMetal")
                         .font(.headline)
-                    Text(present.map { "D3DMetal \($0) is on this Mac. Another Game Porting Toolkit disk image takes its place." }
-                        ?? "Apple's renderer comes in the Game Porting Toolkit, a free download with an Apple account.")
+                    Text(present.map { "D3DMetal \($0) is installed. Choose another Game Porting Toolkit disk image to replace it." }
+                        ?? "D3DMetal is part of Apple’s Game Porting Toolkit, a free download with an Apple Account.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
             VStack(spacing: 0) {
-                step(1, "Download the toolkit from Apple", "The newest “Game Porting Toolkit” disk image.") {
+                step(1, "Download the Game Porting Toolkit", "Get the latest disk image from Apple’s developer downloads.") {
                     Button("Open Apple’s Page", systemImage: "arrow.up.right") { openURL(Self.applePage) }
                         .labelStyle(.titleAndIcon)
                 }
                 Divider().padding(.leading, 42)
                 if let checking {
-                    step(2, "Checking Apple's signature…", checking, isFileName: true) {
+                    step(2, "Verifying Apple’s signature…", checking, isFileName: true) {
                         ProgressView().controlSize(.small)
                     }
                 } else {
-                    step(2, "Choose the disk image", "Or drop it on this window.") {
+                    step(2, "Choose the disk image", "Or drag it into this window.") {
                         Button(problem == nil ? "Choose…" : "Choose Another…") { isChoosing = true }
                             .buttonStyle(.borderedProminent)
                             .keyboardShortcut(.defaultAction)
@@ -62,7 +62,7 @@ struct AddD3DMetalSheet: View {
                 NoticeRow(symbol: .warning, text: problem)
             }
 
-            Text("Tannin takes only D3DMetal out of it and checks Apple's signature first.")
+            Text("Tannin verifies Apple’s signature and copies only D3DMetal.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
 

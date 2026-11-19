@@ -36,10 +36,10 @@ struct D3DMetalCommand: ParsableCommand {
     }
 
     struct Remove: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Take D3DMetal out and move Tannin's copy to the Trash. Games then run on DXMT. Your disk image is not touched.")
+        static let configuration = CommandConfiguration(abstract: "Take D3DMetal out and move Tannin's copy to the Trash. Games then run on DXMT. Your disk image isn't changed.")
         func run() throws {
             try EngineStore().removeD3DMetal()
-            print("D3DMetal removed. Games now run on DXMT; Direct3D 12 games need it added again.")
+            print("D3DMetal removed. Games now run on DXMT. Direct3D 12 games need it added again.")
         }
     }
 
@@ -105,7 +105,7 @@ struct SteamCommand: ParsableCommand {
             let addon = SteamAddon()
             print("This will:")
             for (index, step) in addon.enablePlan().enumerated() { print("  \(index + 1). \(step)") }
-            print("Your games, saves and Steam account are not touched. Valve does not support this.")
+            print("Your games, saves, and Steam account aren't affected. Valve doesn't support modifying Steam.")
             print("To undo: tannin steam disable --yes")
             guard yes else {
                 print("\nNothing was changed. Run again with --yes to proceed.")
@@ -118,7 +118,7 @@ struct SteamCommand: ParsableCommand {
     }
 
     struct Disable: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Put back Steam.app as Valve ships it. Shows what will change; needs --yes to do it.")
+        static let configuration = CommandConfiguration(abstract: "Restore Valve's original Steam.app. Shows what will change; needs --yes to do it.")
 
         @Flag(name: .long, help: "Make the changes. Without this, only the list of changes is printed.")
         var yes = false
@@ -214,7 +214,7 @@ struct GameCommand: ParsableCommand {
         @Option(name: .long, help: "MetalFX upscaling (D3DMetal): on or off.") var metalfx: String?
         @Option(name: .long, help: "Metal 4 renderer (D3DMetal): on or off.") var metal4: String?
         @Option(name: .long, help: "Upscaling (DXMT): off, 1.5, 2 or 3.") var upscale: String?
-        @Option(name: .customLong("async"), help: "Prepare effects in the background (DXVK): on or off.") var background: String?
+        @Option(name: .customLong("async"), help: "Compile shaders in the background (DXVK): on or off.") var background: String?
         @Option(name: .long, help: "Frame cap in frames per second. 0 for none.") var cap: Int?
         @Option(name: .long, help: "Performance overlay: on or off.") var hud: String?
         @Flag(name: .long, help: "Start from nothing set instead of from the game's present settings.") var reset = false
@@ -254,7 +254,7 @@ struct GameCommand: ParsableCommand {
     }
 
     struct Wine: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Show or change the Wine version a game runs on (Steam must be closed to change it). A copy of the game's Windows environment is kept first.")
+        static let configuration = CommandConfiguration(abstract: "Show or change the Wine version a game runs on (Steam must be closed to change it). The game's Windows environment is backed up first.")
 
         @Argument(help: "The game's Steam app ID.") var appID: String
         @Argument(help: "A Wine version such as 11.17, or default.") var wine: String?
@@ -267,25 +267,25 @@ struct GameCommand: ParsableCommand {
             }
             let pinned = store.pin(appID: appID)
             let runsOn = store.engine(for: appID).map(\.title) ?? "nothing installed"
-            print(pinned.map { "Pinned to \($0.title)\(store.isInstalled($0) ? "" : ", which is not installed; it runs on \(runsOn)")" } ?? "Default (\(runsOn))")
+            print(pinned.map { "Pinned to \($0.title)\(store.isInstalled($0) ? "" : ", which isn't installed, so it runs on \(runsOn)")" } ?? "Default (\(runsOn))")
             if let copy = EnvironmentCopy().info(appID: appID) {
-                print("Copy of its Windows environment: \(copy.made.formatted(date: .abbreviated, time: .shortened)), from Wine \(copy.fromWine)")
+                print("Backup of its Windows environment: \(copy.made.formatted(date: .abbreviated, time: .shortened)), from Wine \(copy.fromWine)")
             }
         }
     }
 
     struct Restore: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Put back the copy of a game's Windows environment made before it last changed Wine version (Steam must be closed). What is there now goes to the Trash.")
+        static let configuration = CommandConfiguration(abstract: "Restore the backup of a game's Windows environment made before it last changed Wine version (Steam must be closed). What is there now goes to the Trash.")
         @Argument(help: "The game's Steam app ID.") var appID: String
         func run() throws {
             guard appID.allSatisfy(\.isNumber) else { throw ValidationError("The app ID is a number, for example 1544360.") }
             try GameMove().restore(appID: appID)
-            print("Put back.")
+            print("Restored.")
         }
     }
 
     struct Window: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Show or set the fixed window a game runs in, for old games that need a screen shape this Mac does not have. The game must have been started once and must not be running.")
+        static let configuration = CommandConfiguration(abstract: "Show or set the fixed window a game runs in, for older games that need a 4:3 display. The game must have been played once and must not be running.")
 
         @Argument(help: "The game's Steam app ID.") var appID: String
         @Argument(help: "A size such as 1024x768, or off.") var size: String?
@@ -356,7 +356,7 @@ struct UpkeepCommand: ParsableCommand {
     }
 
     struct Run: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Do everything that is behind. Does not touch Steam.app.")
+        static let configuration = CommandConfiguration(abstract: "Do everything that is behind. Doesn't touch Steam.app.")
         func run() throws {
             let upkeep = Upkeep()
             let plan = upkeep.plan()
@@ -390,7 +390,7 @@ struct RenderersCommand: ParsableCommand {
     }
 
     struct Prepare: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Put DXMT into the runner and write the files for choosing a renderer per game. Downloads nothing and does not touch Steam.")
+        static let configuration = CommandConfiguration(abstract: "Put DXMT into the runner and write the files for choosing a renderer per game. Downloads nothing and doesn't touch Steam.")
         func run() throws {
             try LayerStore().addToRunner()
             Status().run()
@@ -418,7 +418,7 @@ struct RunnerCommand: ParsableCommand {
     )
 
     struct Build: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Assemble the runner from the engine, the patched ntdll and the bridge. Does not touch Steam.")
+        static let configuration = CommandConfiguration(abstract: "Assemble the runner from the engine, the patched ntdll and the bridge. Doesn't touch Steam.")
 
         func run() throws {
             try Runner().build(patch: NtdllPatch())
@@ -447,7 +447,7 @@ struct KitCommand: ParsableCommand {
     )
 
     struct Install: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Download, verify and stage the kit. Does not touch Steam.")
+        static let configuration = CommandConfiguration(abstract: "Download, verify and stage the kit. Doesn't touch Steam.")
 
         func run() throws {
             let kit = NotProtonKit()
@@ -533,7 +533,7 @@ struct EngineCommand: ParsableCommand {
     }
 
     struct Remove: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Move an engine to the Trash. Games pinned to it must be moved first.")
+        static let configuration = CommandConfiguration(abstract: "Move an engine to the Trash. Games pinned to it must be switched first.")
         @Argument(help: "The Wine version, for example 11.17.") var wine: String
         func run() throws {
             let spec = try EngineCommand.spec(wine)

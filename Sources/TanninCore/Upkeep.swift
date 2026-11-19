@@ -5,7 +5,7 @@ public enum UpkeepError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .gameRunning: return "A Windows game is running. Quit it first, then try again."
+        case .gameRunning: return "Quit the Windows game that’s running, then try again."
         }
     }
 }
@@ -30,14 +30,14 @@ public struct Upkeep: Sendable {
 
         public var title: String {
             switch self {
-            case .graphicsLayers: "Renderers are ready to add"
+            case .graphicsLayers: "Add the new renderers"
             }
         }
 
         public var detail: String {
             switch self {
             case .graphicsLayers:
-                "Adds DXMT and the Steam bridge for 32-bit games, and the choice of renderer on each game's page. Nothing is downloaded and Steam is not changed."
+                "Adds DXMT, Steam support for 32-bit games, and a renderer choice for each game. This doesn’t download anything or change Steam."
             }
         }
 

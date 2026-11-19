@@ -37,7 +37,7 @@ struct EnginesSection: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("Games that have no Wine version of their own move to it. Tannin first keeps a copy of each game's Windows environment, so a game can be put back. Steam has to be closed for this; Tannin reopens it afterwards.")
+            Text("Games without their own Wine version will switch to it. Tannin backs up each game’s Windows environment first, so you can restore it. Steam will quit and reopen.")
         }
     }
 
@@ -119,9 +119,11 @@ struct EnginesSection: View {
         var parts: [String] = []
         if !names.isEmpty {
             let list = ListFormatter.localizedString(byJoining: names)
-            parts.append("\(list) \(names.count == 1 ? "uses" : "use") it and will move to \(fallback). Tannin keeps a copy of \(names.count == 1 ? "its" : "each one's") Windows environment first, and Steam quits and reopens.")
+            parts.append("\(list) will switch to \(fallback). Tannin backs up \(names.count == 1 ? "its" : "each game’s") Windows environment first.")
+            parts.append("Steam will quit and reopen, and \(row.spec.title) moves to the Trash.")
+        } else {
+            parts.append("\(row.spec.title) moves to the Trash.")
         }
-        parts.append("The engine goes to the Trash.")
         return parts.joined(separator: " ")
     }
 }

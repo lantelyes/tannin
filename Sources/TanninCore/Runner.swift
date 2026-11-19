@@ -6,7 +6,7 @@ public enum RunnerError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .engineMissing: return "The Wine engine is not installed. Run: tannin engine install"
+        case .engineMissing: return "Wine isn't installed. Run: tannin engine install"
         case let .kitIncomplete(missing):
             return "The Steam Play kit is incomplete (\(missing.joined(separator: ", "))). Run: tannin kit install"
         }
@@ -190,7 +190,7 @@ public struct Runner: Sendable {
         let tools = (try? String(contentsOf: toolsFile, encoding: .utf8)) ?? ""
         checks.append(tools.split(separator: "\n").map(String.init).contains(toolsLine)
             ? Check("Tool listing", .ok, toolsLine.replacingOccurrences(of: "\t", with: " | "))
-            : Check("Tool listing", .broken, "\(toolsFile.path) does not list \(spec.toolName)."))
+            : Check("Tool listing", .broken, "\(toolsFile.path) doesn’t list \(spec.toolName)."))
 
         let gptk = root.appending(path: "lib64/apple_gptk/external/libd3dshared.dylib")
         let layers = LayerStore(paths: paths, spec: spec)
@@ -198,9 +198,9 @@ public struct Runner: Sendable {
             let wanted = exists(gptk) ? ["i386"] : ["x86_64", "i386"]
             let without = wanted.filter { !layers.runnerHasDXMT(root, arch: $0) }
             if !without.isEmpty {
-                checks.append(Check(Self.layersCheck, .attention, "DXMT is not in the runner yet (\(without.joined(separator: ", "))). Run: tannin upkeep run"))
+                checks.append(Check(Self.layersCheck, .attention, "DXMT isn’t in the runner yet (\(without.joined(separator: ", "))). Run: tannin upkeep run"))
             } else if !layers.isPrepared {
-                checks.append(Check(Self.layersCheck, .attention, "The files for choosing a renderer per game are not in place. Run: tannin upkeep run"))
+                checks.append(Check(Self.layersCheck, .attention, "The files for choosing a renderer per game aren’t in place. Run: tannin upkeep run"))
             } else {
                 checks.append(Check(Self.layersCheck, .ok, "DXMT \(LayerStore.dxmtVersion) and DXVK \(LayerStore.dxvkVersion) are ready."))
             }

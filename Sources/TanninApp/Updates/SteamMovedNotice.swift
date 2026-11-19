@@ -8,7 +8,7 @@ struct SteamMovedNotice: View {
     /// Asks to take Steam Play out of Steam; offered only by a copy that cannot update itself.
     let remove: () -> Void
 
-    private static let off = "Steam updated itself, so Steam Play is off."
+    private static let off = "A Steam update turned Steam Play off."
 
     var body: some View {
         NoticeRow(symbol: .warning, text: text) {
@@ -44,10 +44,10 @@ struct SteamMovedNotice: View {
             // The feed says a newer Tannin exists, not which Steam builds it supports, so this claims no more.
             return "\(Self.off) Tannin \(version) is available."
         case .upToDate:
-            let daily = updates.checksAutomatically ? " Tannin checks again every day." : ""
-            return "\(Self.off) No Tannin update supports the new Steam yet.\(daily)"
+            let daily = updates.checksAutomatically ? " Tannin checks again daily." : ""
+            return "\(Self.off) No Tannin update supports this Steam version yet.\(daily)"
         case .failed:
-            return "\(Self.off) Tannin couldn't check for an update."
+            return "\(Self.off) Tannin couldn’t check for an update."
         }
     }
 }

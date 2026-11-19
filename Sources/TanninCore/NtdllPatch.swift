@@ -16,7 +16,7 @@ public enum NtdllPatchError: Error, CustomStringConvertible {
     public var description: String {
         switch self {
         case let .unknownEngine(arch, sha256):
-            return "The engine's \(arch) ntdll (\(sha256)) is not a build Tannin has a patch for."
+            return "Tannin has no patch for this Wine build’s \(arch) ntdll (\(sha256))."
         case let .resultMismatch(arch, expected, actual):
             return "The patched \(arch) ntdll is \(actual), expected \(expected). Nothing was installed."
         }

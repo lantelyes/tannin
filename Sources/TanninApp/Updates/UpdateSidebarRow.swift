@@ -31,7 +31,7 @@ struct UpdateSidebarRow: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 10)
-            .help("See what's new in Tannin \(version) and install it")
+            .help("See what’s new in Tannin \(version) and install it")
         }
     }
 }

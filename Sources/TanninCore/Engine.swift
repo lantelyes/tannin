@@ -6,8 +6,8 @@ public enum EngineError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .missingFile(path): return "The engine archive is not laid out as expected: \(path) is missing."
-        case .notInstalled: return "The Wine engine is not installed. Run: tannin engine install"
+        case let .missingFile(path): return "The Wine download is missing \(path)."
+        case .notInstalled: return "Wine isn't installed. Run: tannin engine install"
         }
     }
 }

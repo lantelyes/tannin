@@ -6,8 +6,8 @@ public enum EnvironmentCopyError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .noEnvironment: return "This game has no Windows environment yet. It gets one the first time it starts."
-        case .noCopy: return "There is no copy of this game's Windows environment to put back."
+        case .noEnvironment: return "This game doesn’t have a Windows environment yet. Steam creates one the first time you play it."
+        case .noCopy: return "There’s no backup of this game’s Windows environment to restore."
         }
     }
 }

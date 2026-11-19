@@ -50,7 +50,7 @@ public struct Setup: Sendable {
         case .engine:
             return Engine(paths: paths).isInstalled ? .done("Wine \(Pins.engineWine)") : .ready
         case .bridge:
-            guard Engine(paths: paths).isInstalled else { return .waiting("Needs the Wine engine first") }
+            guard Engine(paths: paths).isInstalled else { return .waiting("Needs Wine first") }
             let toolkit = GPTK(paths: paths).imported().last
             let linked = D3DMetalLink(paths: paths).linkedVersion()
             if runnerIsBuilt, toolkit == nil || toolkit?.version == linked { return .done("NotProton \(Pins.notProtonVersion)") }
@@ -58,7 +58,7 @@ public struct Setup: Sendable {
         case .steamPlay:
             switch SteamAddon(paths: paths).state() {
             case .on: return .done("On")
-            case .foreign: return .waiting("Another tool is loaded into Steam")
+            case .foreign: return .waiting("Another tool has modified Steam")
             case .off: break
             }
             return Self.required.allSatisfy { state(of: $0).isDone } ? .ready : .waiting("Needs the steps above first")

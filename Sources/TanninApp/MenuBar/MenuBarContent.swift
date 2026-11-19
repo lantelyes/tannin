@@ -19,7 +19,7 @@ struct MenuBarContent: View {
             Text(model.problem?.title ?? "Steam Play is on")
             Text(status.stackSummary)
         } else {
-            Text("Checking this Mac…")
+            Text("Checking Steam…")
         }
         if !model.library.installed.isEmpty {
             Divider()

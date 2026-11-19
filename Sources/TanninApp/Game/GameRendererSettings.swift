@@ -14,11 +14,11 @@ struct GameRendererSettings: View {
             case .d3dMetal:
                 Toggle(isOn: $draft.rayTracing) {
                     Text("Ray Tracing")
-                    Text("Looks better, costs frame rate. Off by default on M1 and M2.")
+                    Text("Better lighting at a lower frame rate. Off by default on M1 and M2.")
                 }
                 Toggle(isOn: $draft.metalFX) {
                     Text("MetalFX Upscaling")
-                    Text("Lets the game's DLSS setting use Apple's upscaler.")
+                    Text("Lets the game’s DLSS setting use Apple’s upscaler.")
                 }
             case .dxmt:
                 Picker(selection: $draft.upscaling) {
@@ -27,12 +27,12 @@ struct GameRendererSettings: View {
                     }
                 } label: {
                     Text("Upscaling")
-                    Text("Enlarges the game's picture with MetalFX. Set a lower resolution in the game to gain speed.")
+                    Text("Upscales the game with MetalFX. Lower the in-game resolution for better performance.")
                 }
             case .dxvk:
                 Toggle(isOn: $draft.backgroundEffects) {
-                    Text("Prepare Effects in the Background")
-                    Text("Less stutter the first time an effect appears. It may show a moment late.")
+                    Text("Compile Shaders in the Background")
+                    Text("Reduces stutter when an effect first appears. Some effects may show up a moment late.")
                 }
             case .automatic, nil:
                 EmptyView()

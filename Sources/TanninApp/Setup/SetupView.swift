@@ -39,7 +39,7 @@ struct SetupView: View {
         .sheet(isPresented: $isAddingSteamPlay) {
             SteamPlaySheet(isForSetup: true)
         }
-        .alert("That didn't work", isPresented: $model.isShowingErrorInSetup) {
+        .alert(model.errorTitle, isPresented: $model.isShowingErrorInSetup) {
             Button("OK") {}
         } message: {
             Text(model.errorMessage ?? "")
@@ -80,14 +80,14 @@ struct SetupView: View {
     private func title(_ phase: SetupPhase) -> String {
         switch phase {
         case .done:
-            gameCount == 0 ? "Steam can install Windows games" : "Steam can install your Windows games"
+            gameCount == 0 ? "Steam can now install Windows games" : "Steam can now install your Windows games"
         case .readyForSteamPlay, .foreignTool, .addingSteamPlay, .steamPlayRefused, .steamPlayFailed:
             "Almost there"
         case .checking, .steamMissing, .before, .working, .paused, .failed:
             switch gameCount {
             case 0: "Set Up Tannin"
-            case 1: "1 of your Steam games is for Windows"
-            default: "\(gameCount) of your Steam games are for Windows"
+            case 1: "1 of your Steam games is Windows-only"
+            default: "\(gameCount) of your Steam games are Windows-only"
             }
         }
     }
@@ -96,20 +96,20 @@ struct SetupView: View {
         switch phase {
         case .done:
             let games = gameCount == 0
-                ? "They get an Install button in your Steam library, like any Mac game."
-                : "They are in your Steam library with an Install button, like any Mac game."
+                ? "Windows games in your Steam library now have an Install button, like any Mac game."
+                : "Find them in your Steam library and click Install, like any Mac game."
             return model.d3dMetalIsAdded
                 ? games
-                : games + " Games that use Direct3D 12 also need Apple's D3DMetal renderer. Add it at any time under Engines & Renderers."
+                : games + " Direct3D 12 games also need Apple’s D3DMetal, which you can add in Engines & Renderers."
         case .readyForSteamPlay, .foreignTool, .addingSteamPlay, .steamPlayRefused, .steamPlayFailed:
-            return "The Wine engine and the Steam bridge are on this Mac. One step is left, and it is the only one that changes Steam."
+            return "Wine and the Steam bridge are installed. The last step adds Steam Play to Steam."
         case .checking, .steamMissing, .before, .working, .paused, .failed:
             let what = switch gameCount {
-            case 0: "Tannin lets Steam on this Mac install and play Windows games."
-            case 1: "Tannin lets Steam on this Mac install and play it."
-            default: "Tannin lets Steam on this Mac install and play them."
+            case 0: "Tannin lets you install and play Windows games from Steam on your Mac."
+            case 1: "Tannin lets you install and play it from Steam on your Mac."
+            default: "Tannin lets you install and play them from Steam on your Mac."
             }
-            return "\(what) It downloads about \(Setup.downloadBytes.roundedMegabytes), then adds Steam Play to Steam. You can remove it at any time."
+            return "\(what) Setup downloads about \(Setup.downloadBytes.roundedMegabytes) and asks before it changes Steam."
         }
     }
 

@@ -29,12 +29,12 @@ public struct EngineSpec: Sendable, Hashable, Identifiable {
     /// The names are the ones Tannin 0.2 and 0.3 used, so their installs carry on.
     public static let wine1119 = EngineSpec(
         version: Pins.engineVersion, wine: Pins.engineWine, pin: Pins.engine, build: "tannin-1",
-        toolName: "notproton-tannin", layerSuffix: "", note: "The newest engine Tannin has tested."
+        toolName: "notproton-tannin", layerSuffix: "", note: "The latest version tested with Tannin."
     )
 
     public static let wine1117 = EngineSpec(
         version: "4.7.3", wine: "11.17", pin: Pins.engine1117, build: "tannin-1117",
-        toolName: "notproton-tannin-1117", layerSuffix: "-1117", note: "The version before it."
+        toolName: "notproton-tannin-1117", layerSuffix: "-1117", note: "The previous version."
     )
 
     /// Every engine this Tannin knows, newest first.

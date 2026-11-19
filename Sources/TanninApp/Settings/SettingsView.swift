@@ -10,14 +10,14 @@ struct SettingsView: View {
             Section {
                 Toggle(isOn: $showMenuBarItem) {
                     Text("Show Tannin in the Menu Bar")
-                    Text("Status at a glance, and a quick way to start an installed game.")
+                    Text("See Steam Play’s status and start games from the menu bar.")
                 }
             }
             Section("Updates") {
                 if updates.canUpdate {
                     Toggle(isOn: $updates.checksAutomatically) {
                         Text("Check for Updates Automatically")
-                        Text("Once a day. Tannin asks before it installs anything.")
+                        Text("Tannin checks once a day and asks before installing.")
                     }
                     UpdateStatusRow()
                 } else {

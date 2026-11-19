@@ -31,11 +31,11 @@ public enum DownloadError: Error, CustomStringConvertible {
     public var description: String {
         switch self {
         case let .allSourcesFailed(name, lastError):
-            return "Could not download \(name). \(lastError)"
+            return "Couldn’t download \(name). \(lastError)"
         case let .wrongSize(name, expected, actual):
-            return "\(name) is \(actual) bytes, expected \(expected). The partial file was removed."
+            return "\(name) is \(actual) bytes, expected \(expected). Tannin deleted the partial file."
         case let .wrongHash(name, expected, actual):
-            return "\(name) does not match its pinned SHA-256 (expected \(expected), got \(actual)). The file was removed."
+            return "\(name) doesn’t match its pinned SHA-256 (expected \(expected), got \(actual)), so Tannin deleted it."
         }
     }
 }

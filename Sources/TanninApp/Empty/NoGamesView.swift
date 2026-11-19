@@ -6,11 +6,11 @@ struct NoGamesView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("No Windows Games Yet", systemImage: "gamecontroller")
+            Label("No Windows Games Installed", systemImage: "gamecontroller")
         } description: {
             Text(model.problem == nil
-                ? "Steam can now install Windows games. Install one from your Steam library and it appears here."
-                : "Once Steam Play is on, install a Windows game from your Steam library and it appears here.")
+                ? "Install a Windows game from your Steam library and it’ll show up here."
+                : "Turn on Steam Play, then install a Windows game from your Steam library.")
         } actions: {
             Button("Open Steam") { model.openSteam() }
                 .buttonStyle(.borderedProminent)

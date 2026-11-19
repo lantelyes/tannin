@@ -47,14 +47,14 @@ public struct Doctor: Sendable {
             let signature = steam.signature()
             let injected = steam.injectedLibraries()
             if signature.isValve, injected == nil {
-                checks.append(Check("Steam", .ok, "Found in Applications, exactly as Valve ships it."))
+                checks.append(Check("Steam", .ok, "Found in Applications, unmodified."))
             } else if let injected {
                 checks.append(Check("Steam", .info, "Steam Play add-on is installed (\(injected))."))
             } else {
                 checks.append(Check("Steam", .attention,
-                                    "Steam.app is not Valve-signed (team \(signature.teamID ?? "none"), valid: \(signature.valid))."))
+                                    "Steam.app isn't Valve-signed (team \(signature.teamID ?? "none"), valid: \(signature.valid))."))
             }
-            checks.append(Check("Steam build", .info, steam.clientBuild() ?? "unknown; Steam has not run yet"))
+            checks.append(Check("Steam build", .info, steam.clientBuild() ?? "unknown; Steam hasn't run yet"))
             checks.append(Check("Steam running", .info, steam.isRunning() ? "yes" : "no"))
             let apps = steam.installedApps()
             checks.append(Check("Installed games", .info,

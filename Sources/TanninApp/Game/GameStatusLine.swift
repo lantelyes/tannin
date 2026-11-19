@@ -33,7 +33,7 @@ struct GameStatusLine: View {
         case .installing: return "Installing in Steam"
         case .installed:
             guard model.status != nil else { return "Checking" }
-            return model.problem == nil ? "Ready to play" : "Can't start right now"
+            return model.problem == nil ? "Ready to play" : "Can’t start right now"
         }
     }
 

@@ -34,7 +34,7 @@ struct UpdateStatusRow: View {
         case .checking: "Checking for updates…"
         case .upToDate: ["Up to date.", lastChecked].compactMap(\.self).joined(separator: " ")
         case .available: "You have \(updates.currentVersion)."
-        case let .failed(reason): "Couldn't check. \(reason)"
+        case let .failed(reason): "Couldn’t check. \(reason)"
         }
     }
 

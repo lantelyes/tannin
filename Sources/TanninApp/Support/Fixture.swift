@@ -62,7 +62,7 @@ struct Fixture {
                                                         upkeepProgress: .working(.graphicsLayers))),
             ("steam-play-after-update-finished", Fixture(status: ready, library: library, selection: .steamPlay, upkeepProgress: .finished)),
             ("steam-play-after-update-failed", Fixture(status: ready, library: library, selection: .steamPlay, upkeep: [.graphicsLayers],
-                                                       upkeepProgress: .failed(.graphicsLayers, "A Windows game is running. Quit it first, then try again."))),
+                                                       upkeepProgress: .failed(.graphicsLayers, "Quit the Windows game that’s running, then try again."))),
             ("after-update-sidebar", Fixture(status: ready, library: library, selection: .game(lego.appID), upkeep: [.graphicsLayers],
                                              layerUsage: [lego.appID: .d3dMetal])),
             ("renderers", Fixture(status: ready, library: threeGames, selection: .renderers, layerUsage: threeGamesUsage, engines: oneEngineThreeGames)),
@@ -135,7 +135,7 @@ struct Fixture {
         let noRosetta = setupStates(rosetta: .ready)
         let engineHere = setupStates(engine: .done("Wine 11.19"), bridge: .ready)
         let lastStep = setupStates(engine: .done("Wine 11.19"), bridge: .done("NotProton 1.2.6"), steamPlay: .ready)
-        let foreign = setupStates(engine: .done("Wine 11.19"), bridge: .done("NotProton 1.2.6"), steamPlay: .waiting("Another tool is loaded into Steam"))
+        let foreign = setupStates(engine: .done("Wine 11.19"), bridge: .done("NotProton 1.2.6"), steamPlay: .waiting("Another tool has modified Steam"))
         let oneGame = Library(installed: [], notInstalled: [game("15210", "Silent Hunter III", install: .notInstalled)])
         return [
             // The four moments, in the order someone meets them.
@@ -179,7 +179,7 @@ struct Fixture {
 
     /// The five steps on a Mac that has Rosetta and Steam and nothing of Tannin's, with any of them replaced.
     private static func setupStates(rosetta: Setup.State = .done("Installed"), steam: Setup.State = .done("In Applications"),
-                                    engine: Setup.State = .ready, bridge: Setup.State = .waiting("Needs the Wine engine first"),
+                                    engine: Setup.State = .ready, bridge: Setup.State = .waiting("Needs Wine first"),
                                     steamPlay: Setup.State = .waiting("Needs the steps above first")) -> [Setup.Step: Setup.State] {
         [.rosetta: rosetta, .steam: steam, .engine: engine, .bridge: bridge, .steamPlay: steamPlay]
     }
@@ -280,7 +280,7 @@ struct Fixture {
     }
 
     private static let newer = UpdateStatus.available(version: "0.2.1")
-    private static let offline = UpdateStatus.failed("This Mac appears to be offline.")
+    private static let offline = UpdateStatus.failed("Your Mac appears to be offline.")
 
     private static func steamMoved(_ updates: UpdateStatus) -> Fixture {
         Fixture(status: steamUpdated, library: library, selection: .game(lego.appID), updates: updates)

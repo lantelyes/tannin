@@ -9,11 +9,11 @@ public enum EngineStoreError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .isTheDefault(name): return "\(name) is the default. Make another engine the default first."
-        case .isTheOnlyOne: return "This is the only Wine engine installed."
-        case let .notInstalled(name): return "\(name) is not installed."
-        case .gameRunning: return "A Windows game is running. Quit it first, then try again."
-        case let .isTheNewest(name): return "\(name) is the engine Tannin sets up, so it stays."
+        case let .isTheDefault(name): return "\(name) is the default. Make another Wine version the default first."
+        case .isTheOnlyOne: return "You can’t remove the only Wine version."
+        case let .notInstalled(name): return "\(name) isn’t installed."
+        case .gameRunning: return "Quit the Windows game that’s running, then try again."
+        case let .isTheNewest(name): return "Tannin needs \(name), so it can’t be removed."
         }
     }
 }

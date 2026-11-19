@@ -21,7 +21,7 @@ struct EngineProgress: Equatable {
     /// "Downloading. 212 MB of 461 MB.", with the words to begin with left to the place that shows it.
     func caption(working: String = "Downloading") -> String {
         guard let download else { return isPaused ? "Paused." : "Starting…" }
-        if download.isVerifying { return "Checking the download and unpacking it…" }
+        if download.isVerifying { return "Verifying and unpacking the download…" }
         let received = download.received.megabytes
         let amount = download.total.map { "\(received) of \($0.megabytes)" } ?? received
         return isPaused ? "Paused at \(amount)." : "\(working). \(amount)."
