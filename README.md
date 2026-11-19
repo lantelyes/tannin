@@ -31,7 +31,6 @@
 - Everything Tannin uses is free: a Wine build from CodeWeavers' published source, the open-source
   NotProton bridge, and optionally Apple's D3DMetal from your own Game Porting Toolkit download. It
   doesn't use CrossOver.
-- One button removes Steam Play and restores Valve's original Steam.
 
 ## A look around
 
