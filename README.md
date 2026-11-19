@@ -126,18 +126,6 @@ typed yourself.
 You add, replace, and remove D3DMetal in **Engines & Renderers**. Tannin verifies Apple's signature,
 copies only D3DMetal, and doesn't change the disk image.
 
-## What it changes in Steam, and how to undo it
-
-Tannin modifies the Steam app, which Valve doesn't support. It does four things:
-
-- Adds one file to `Steam.app`.
-- Changes two settings in Steam's `Info.plist`.
-- Re-signs Steam on your Mac so it loads that file.
-- Turns off Steam's automatic updates, because an update removes the change.
-
-To undo all of it, choose **Steam Play > Remove Steam Play**. Tannin replaces Steam with a copy signed
-by Valve, after verifying that signature. Your games, saves, and account aren't affected.
-
 ## Known limits
 
 - Direct3D 12 games need Apple's D3DMetal.
