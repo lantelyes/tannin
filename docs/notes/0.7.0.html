@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>What’s new in Tannin 0.7.0</title>
+<style>
+:root { color-scheme: light dark; }
+body { margin: 0; padding: 10px 14px; font: 12px/17px -apple-system, BlinkMacSystemFont, sans-serif; color: CanvasText; }
+h2 { margin: 0 0 4px; font-size: 13px; line-height: 17px; font-weight: 700; }
+h3 { margin: 0 0 2px; font-size: 12px; font-weight: 600; }
+ul { margin: 0 0 10px; padding-left: 18px; }
+p { margin: 0 0 10px; }
+a { color: LinkText; }
+</style>
+</head>
+<body>
+<!-- Written by scripts/make-notes.swift from CHANGELOG.md. Change the notes there, not here. -->
+<h2>New in 0.7.0</h2>
+<ul>
+  <li>The setup window now shows the same seven game covers for everyone, in full color. They no longer start gray and fill in as setup runs.</li>
+  <li>The covers download from Steam (about 450 KB) the first time the setup window opens, and are saved on your Mac. Until they load, each one shows as a tinted placeholder.</li>
+  <li>Fixed the setup window briefly showing the Set Up button again between the Wine and Steam bridge downloads.</li>
+  <li>Fixed Resume and Try Again restarting the progress bar from zero.</li>
+  <li>The setup window no longer changes size.</li>
+  <li>Rewrote the text throughout the app, the website, and these notes.</li>
+  <li>Renamed Prepare Effects in the Background to Compile Shaders in the Background.</li>
+  <li>Error alerts now say what Tannin couldn’t do.</li>
+</ul>
+<h2>New in 0.6.0</h2>
+<ul>
+  <li>New Engines &amp; Renderers page. It lists your Wine versions and the three renderers (D3DMetal, DXMT, DXVK) and shows how many games use each. This is also where you add, replace, or remove D3DMetal.</li>
+  <li>“Graphics layer” is now called “renderer”.</li>
+  <li>Each game’s page now starts with its Wine version and renderer. You can install another Wine version or add D3DMetal from there.</li>
+  <li>Adding D3DMetal is simpler. A sheet links to Apple’s download and accepts the disk image by drag and drop.</li>
+  <li>You can now remove D3DMetal. Games then run on DXMT.</li>
+  <li>Steam Play has its own page, with the update freeze and the Steam bridge.</li>
+  <li>New setup window. One button downloads everything, then asks before adding Steam Play. The Game Porting Toolkit step is gone.</li>
+  <li>Setup now reports the real download size, about 650 MB.</li>
+  <li>A game’s page now tells you when the game needs Direct3D 12 and D3DMetal isn’t installed.</li>
+  <li>Your games keep their existing settings.</li>
+</ul>
+<h2>New in 0.5.0</h2>
+<ul>
+  <li>New Fixed Window setting on a game’s page, under Advanced. Some older games, such as Silent Hunter III, need a 4:3 resolution that a Mac display doesn’t have, and quit with an error. Choose a size and the game runs in a window of that size.</li>
+  <li>When a game quits for that reason, its page offers Use 1024 × 768.</li>
+  <li>Changing Fixed Window doesn’t require quitting Steam. The game has to have been played once first.</li>
+</ul>
+<h2>New in 0.4.0</h2>
+<ul>
+  <li>You can install Wine 11.17 alongside 11.19 from the Engine page. Your games don’t change until you switch them.</li>
+  <li>Each game can use its own Wine version. Once a second version is installed, a game’s page has a Wine Version row where you can keep the default or pick another.</li>
+  <li>Before a game switches Wine versions, Tannin backs up its Windows environment (its settings, and for some games their saves). To go back, choose More &gt; Restore Windows Environment.</li>
+  <li>On the Engine page you can make another installed version the default, show it in Finder, or remove it. Removing a version first switches the games that use it.</li>
+</ul>
+<h2>New in 0.3.0</h2>
+<ul>
+  <li>Each game can choose its graphics layer: Apple’s D3DMetal, DXMT, or DXVK. Games start on Automatic, which uses D3DMetal for 64-bit games and DXMT for 32-bit games.</li>
+  <li>Fixed 32-bit games that need Steam quitting at launch.</li>
+  <li>Apple’s Game Porting Toolkit is now optional. Without it, games run on DXMT. Direct3D 12 games still need it. You can skip it in setup and add it later on the Engine page.</li>
+  <li>After updating, open Engine and click Add under “After the Update”. It takes a few seconds and doesn’t download anything or change Steam.</li>
+  <li>A game’s page shows which layer Automatic uses and, when the game’s log says, which layer it last ran on.</li>
+</ul>
+<h2>New in 0.2.1</h2>
+<ul>
+  <li>No changes. This release tests that Tannin can update itself from its website.</li>
+</ul>
+<h2>New in 0.2.0</h2>
+<ul>
+  <li>Tannin can update itself. Choose Tannin &gt; Check for Updates, or let it check once a day. It asks before installing.</li>
+  <li>If Tannin isn’t in your Applications folder, it offers to move itself there, because it can only update from Applications.</li>
+  <li>When a Steam update turns Steam Play off, Tannin checks for a Tannin update right away and tells you if there is one.</li>
+  <li>Settings has a new Updates section, and Tannin has a website with these notes.</li>
+</ul>
+<h2>New in 0.1.0</h2>
+<ul>
+  <li>The first test build.</li>
+</ul>
+</body>
+</html>

@@ -3,7 +3,7 @@
 Every release, newest first. `scripts/release.sh` won't make a release that has no section here, and
 the same text becomes the notes shown in the update window.
 
-## 0.7.0 (not released yet)
+## 0.7.0 (November 19, 2026)
 
 - The setup window now shows the same seven game covers for everyone, in full color. They no longer
   start gray and fill in as setup runs.
