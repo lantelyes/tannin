@@ -83,10 +83,12 @@ func parse(_ changelog: String) -> [Release] {
 /// One line of changelog text as HTML: escaped, with the little Markdown the changelog uses.
 func html(_ text: String) -> String {
     var out = text.replacing("&", with: "&amp;").replacing("<", with: "&lt;").replacing(">", with: "&gt;")
+    // Quotation marks first, while the only ones in the text are the changelog's own.
+    out = out.replacing(#/"([^"]+)"/#) { "“\($0.1)”" }
     out = out.replacing(#/\*\*(.+?)\*\*/#) { "<strong>\($0.1)</strong>" }
     out = out.replacing(#/`(.+?)`/#) { "<code>\($0.1)</code>" }
     out = out.replacing(#/\[(.+?)\]\((https?:[^)\s]+)\)/#) { "<a href=\"\($0.2)\">\($0.1)</a>" }
-    out = out.replacing(#/(\w)'(\w)/#) { "\($0.1)’\($0.2)" }
+    out = out.replacing(#/(\w)'/#) { "\($0.1)’" }
     return out
 }
 
@@ -143,7 +145,7 @@ func whatsNewPage(_ releases: [Release]) -> String {
     </main>
 
     <footer class="wrap foot">
-      Tannin is free software under the GPL, version 3. <a href="https://github.com/lantelyes/tannin">Source on GitHub</a>. Not affiliated with Valve, Apple or CodeWeavers.
+      Tannin is free software, licensed under GPL-3.0. <a href="https://github.com/lantelyes/tannin">Source on GitHub</a>. Not affiliated with Valve, Apple, or CodeWeavers.
     </footer>
 
     </body>
@@ -233,12 +235,13 @@ case "text" where arguments.count == 2:
     print(release(version).markdown.joined(separator: "\n"))
     print("""
 
-    **To install:** download `Tannin-\(version).zip` below and open it, move Tannin to your Applications folder, \
-    and open it. macOS will ask you to allow it once, in System Settings › Privacy & Security › Open Anyway. \
+    To install, download `Tannin-\(version).zip` below, unzip it, and drag Tannin to your Applications folder. \
+    The first time you open it, macOS blocks it because the app isn't notarized. Go to \
+    System Settings > Privacy & Security and click Open Anyway. \
     The [README](https://github.com/lantelyes/tannin#install) has every step. If you already have Tannin 0.2.0 \
-    or later, choose Tannin › Check for Updates… instead.
+    or later, choose Tannin > Check for Updates instead.
 
-    For Macs with Apple silicon, on macOS 26 or later. This is a test build.
+    Requires Apple silicon and macOS 26 or later. This is an early test build.
     """)
 
 case "check" where arguments.count == 2:
