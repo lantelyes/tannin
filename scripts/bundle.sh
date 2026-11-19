@@ -90,7 +90,9 @@ plutil -lint "$app/Contents/Info.plist" > /dev/null
 codesign --force --sign "$identity" "$app"
 codesign --verify --deep --strict "$app"
 
-if [ -n "$public_key" ]; then
+if [ "${TANNIN_NO_UPDATES:-}" = "1" ]; then
+  echo "built $app $version (updating is off: TANNIN_NO_UPDATES=1)"
+elif [ -n "$public_key" ]; then
   echo "built $app $version (updates from $feed)"
 else
   echo "built $app $version (updating is off: no update key in scripts/bundle.sh yet)"
