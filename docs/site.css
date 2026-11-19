@@ -71,6 +71,14 @@ p { margin: 0 0 14px; }
 ol, ul { margin: 0 0 14px; padding-left: 22px; }
 li { margin-bottom: 8px; padding-left: 4px; }
 
+/* How it works: what the game expects, what translates it, what the Mac has */
+.pairs { margin: 4px 0 16px; overflow-x: auto; }
+.pairs table { width: 100%; border-collapse: collapse; }
+.pairs th { padding: 0 14px 8px 0; font-size: 14px; font-weight: 400; color: var(--mute); text-align: left; }
+.pairs td { padding: 11px 14px 11px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.pairs td:nth-child(2) { font-weight: 600; }
+.pairs th:last-child, .pairs td:last-child { padding-right: 0; }
+
 .foot { margin-top: 80px; padding: 24px 0 44px; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.6; color: var(--mute); }
 
 /* What's New: version and date on the left, what changed on the right */

@@ -96,6 +96,22 @@ Some updates add to what Tannin already installed. When that happens, a **Finish
 appears in the sidebar and takes you to the Steam Play page, where each addition has its own button.
 Tannin doesn't download anything or change Steam until you click one.
 
+## How it works
+
+A Windows game expects four things a Mac doesn't have. Tannin sets up a translator for each.
+
+| The game expects | Translated by | Your Mac has |
+|---|---|---|
+| Windows | Wine | macOS |
+| Direct3D graphics | A renderer (D3DMetal, DXMT, or DXVK) | Metal |
+| An Intel processor | Rosetta | Apple silicon |
+| Steam for Windows | The Steam bridge | Steam for Mac |
+
+Tannin also adds Steam Play to Steam for Mac. That's what gives Windows games an Install button and
+starts them through all four when you click Play. It does that by adding one file to Steam and
+re-signing the app. To undo it, choose **Steam Play > Remove Steam Play**, and Tannin restores Valve's
+original Steam.
+
 ## Wine versions
 
 Tannin installs the latest Wine version it's been tested with. **Engines & Renderers** also lists the
