@@ -16,7 +16,7 @@ public enum LayerUsage: String, Sendable, Equatable {
         case .d3dMetal: "D3DMetal"
         case .dxmt: "DXMT"
         case .dxvk: "DXVK"
-        case .wineOwn: "Wine's own drawing"
+        case .wineOwn: "WineD3D"
         }
     }
 

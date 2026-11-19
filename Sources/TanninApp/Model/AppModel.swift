@@ -51,6 +51,8 @@ final class AppModel {
     /// A plain description of the action in progress, or nil.
     private(set) var activity: String?
     private(set) var errorMessage: String?
+    /// What could not be done, as the alert's title. The reason is `errorMessage`.
+    private(set) var errorTitle = ""
     /// One flag per window, so a failure is reported once, in the window the user is looking at.
     var isShowingErrorInMain = false
     var isShowingErrorInSetup = false
@@ -319,7 +321,8 @@ final class AppModel {
 
     // MARK: Changing things
 
-    private func fail(_ error: any Error) {
+    private func fail(_ error: any Error, title: String) {
+        errorTitle = title
         errorMessage = String(describing: error)
         let setupIsInFront = NSApp.keyWindow?.identifier?.rawValue.hasPrefix(WindowID.setup) ?? false
         if setupIsInFront {
@@ -329,13 +332,14 @@ final class AppModel {
         }
     }
 
-    private func perform(_ label: String, _ work: @escaping @Sendable () throws -> Void) async {
+    /// `failure` is the alert's title if the work throws: what Tannin could not do.
+    private func perform(_ label: String, failure: String, _ work: @escaping @Sendable () throws -> Void) async {
         guard !isBusy else { return }
         activity = label
         do {
             try await Task.detached(operation: work).value
         } catch {
-            fail(error)
+            fail(error, title: failure)
         }
         activity = nil
         await refresh()
@@ -343,14 +347,15 @@ final class AppModel {
 
     func setUpdateFreeze(_ on: Bool) async {
         let paths = paths
-        await perform(on ? "Freezing Steam updates" : "Allowing Steam updates") {
+        await perform(on ? "Freezing Steam updates" : "Allowing Steam updates",
+                      failure: on ? "Tannin couldn’t freeze Steam updates" : "Tannin couldn’t turn Steam updates back on") {
             try UpdateFreeze(paths: paths).set(on)
         }
     }
 
     func addSteamPlay() async {
         let paths = paths
-        await perform("Adding Steam Play to Steam") {
+        await perform("Adding Steam Play to Steam", failure: "Tannin couldn’t add Steam Play") {
             try SteamAddon(paths: paths).enable()
             try? SteamLauncher(paths: paths).openSteam()
         }
@@ -380,7 +385,7 @@ final class AppModel {
 
     func removeSteamPlay() async {
         let paths = paths
-        await perform("Putting Steam back as Valve ships it") {
+        await perform("Removing Steam Play", failure: "Tannin couldn’t remove Steam Play") {
             try SteamAddon(paths: paths).disable(quiet: true)
         }
     }
@@ -390,7 +395,7 @@ final class AppModel {
     /// and Steam is left alone when nothing else changed.
     func save(_ settings: GameSettings, fixedWindow: FixedWindow.Size?, appID: String) async {
         let paths = paths
-        await perform("Saving game settings") {
+        await perform("Saving game settings", failure: "Tannin couldn’t save these settings") {
             let config = SteamConfig(paths: paths)
             let engine = EngineStore(paths: paths).engine(for: appID) ?? .newest
             let existing = config.launchOptions(appID: appID) ?? ""
@@ -417,7 +422,7 @@ final class AppModel {
     /// Gives a game a fixed window straight away, from the notice that suggests it.
     func useFixedWindow(_ size: FixedWindow.Size, appID: String) async {
         let paths = paths
-        await perform("Setting a fixed window") {
+        await perform("Setting a fixed window", failure: "Tannin couldn’t set a fixed window") {
             try FixedWindow(paths: paths).set(size, appID: appID)
         }
     }
@@ -463,7 +468,7 @@ final class AppModel {
     /// Takes D3DMetal out again. No game's own choice is rewritten, so Steam stays open.
     func removeD3DMetal() async {
         let paths = paths
-        await perform("Removing D3DMetal") {
+        await perform("Removing D3DMetal", failure: "Tannin couldn’t remove D3DMetal") {
             try EngineStore(paths: paths).removeD3DMetal()
         }
     }
@@ -500,9 +505,9 @@ final class AppModel {
     // MARK: Wine engines
 
     /// Does something that rewrites Steam's settings: Steam is quit first if it is open, and reopened afterwards.
-    private func withSteamClosed(_ label: String, _ work: @escaping @Sendable () throws -> Void) async {
+    private func withSteamClosed(_ label: String, failure: String, _ work: @escaping @Sendable () throws -> Void) async {
         let paths = paths
-        await perform(label) {
+        await perform(label, failure: failure) {
             let wasRunning = SteamInstall(paths: paths).isRunning()
             if wasRunning { try SteamAddon(paths: paths).stopSteam() }
             defer { if wasRunning { try? SteamLauncher(paths: paths).openSteam() } }
@@ -530,7 +535,7 @@ final class AppModel {
             engineProgress?.isPaused = true
         } catch {
             engineProgress = nil
-            fail(error)
+            fail(error, title: "Tannin couldn’t install \(spec.title)")
         }
         self.cancellation = nil
         await refresh()
@@ -553,7 +558,7 @@ final class AppModel {
         let paths = paths
         let games = library.installed.map(\.appID)
         let moving = Set(games.filter { gameEngines[$0]?.pin == nil })
-        await withSteamClosed("Making \(spec.title) the default") {
+        await withSteamClosed("Making \(spec.title) the default", failure: "Tannin couldn’t make \(spec.title) the default") {
             try GameMove(paths: paths).makeDefault(spec, games: games)
         }
         if engines.first(where: { $0.spec == spec })?.isDefault == true { recentlyMoved.formUnion(moving) }
@@ -563,9 +568,9 @@ final class AppModel {
     func removeEngine(_ spec: EngineSpec) async {
         let paths = paths
         if engines.first(where: { $0.spec == spec })?.games.isEmpty == false {
-            await withSteamClosed("Removing \(spec.title)") { try GameMove(paths: paths).remove(spec) }
+            await withSteamClosed("Removing \(spec.title)", failure: "Tannin couldn’t remove \(spec.title)") { try GameMove(paths: paths).remove(spec) }
         } else {
-            await perform("Removing \(spec.title)") { try GameMove(paths: paths).remove(spec) }
+            await perform("Removing \(spec.title)", failure: "Tannin couldn’t remove \(spec.title)") { try GameMove(paths: paths).remove(spec) }
         }
     }
 
@@ -573,7 +578,7 @@ final class AppModel {
     func moveGame(_ appID: String, to spec: EngineSpec?) async {
         let paths = paths
         let before = gameEngines[appID]
-        await withSteamClosed("Moving the game to \(spec?.title ?? "the default Wine version")") {
+        await withSteamClosed("Switching the game to \(spec?.title ?? "the default Wine version")", failure: "Tannin couldn’t switch this game’s Wine version") {
             try GameMove(paths: paths).move(appID: appID, to: spec)
         }
         if gameEngines[appID]?.runsOn != before?.runsOn { recentlyMoved.insert(appID) }
@@ -583,7 +588,7 @@ final class AppModel {
     /// Puts back the copy of a game's Windows environment made before it last moved.
     func restoreGame(_ appID: String) async {
         let paths = paths
-        await withSteamClosed("Putting the Windows environment back") {
+        await withSteamClosed("Restoring the Windows environment", failure: "Tannin couldn’t restore the backup") {
             try GameMove(paths: paths).restore(appID: appID)
         }
         recentlyMoved.remove(appID)
@@ -601,7 +606,7 @@ final class AppModel {
             do {
                 try await Task.detached { try SteamLauncher(paths: paths).send(request) }.value
             } catch {
-                fail(error)
+                fail(error, title: "Steam didn’t respond")
             }
         }
     }
@@ -616,7 +621,7 @@ final class AppModel {
     }
 
     func bugReport() -> String {
-        guard let status else { return "Tannin has not finished reading its status yet." }
+        guard let status else { return "Tannin hasn’t finished reading its status yet." }
         return LogReader(paths: paths).bugReport(status: status, games: library.installed)
     }
 

@@ -8,7 +8,7 @@ struct UpkeepSection: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Section("After the Update") {
+        Section("Finish Updating") {
             switch model.upkeepProgress {
             case let .working(item):
                 LabeledContent {
@@ -41,8 +41,8 @@ struct UpkeepSection: View {
                         .disabled(model.isBusy)
                 } label: {
                     Label {
-                        Text("The update didn't finish")
-                        Text("Nothing was changed. Steam Play works as it did before. \(message)")
+                        Text("The update didn’t finish")
+                        Text("Nothing changed, and Steam Play still works. \(message)")
                     } icon: {
                         StatusSymbol.warning.image
                     }

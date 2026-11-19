@@ -4,6 +4,8 @@
 #   TANNIN_VERSION        the version to stamp, instead of the VERSION file (test builds)
 #   TANNIN_SIGN_IDENTITY  the code-signing identity; "-" (the default) signs for this Mac only
 #   TANNIN_FEED_URL       the update feed built into the app, instead of the project's website
+#   TANNIN_NO_UPDATES     set to 1 to leave the update feed out: a copy for looking at, which neither
+#                         checks for updates nor asks to be moved to Applications
 #
 # The feed address is fixed when the app is built. Nothing can change it while the app runs.
 set -eu
@@ -46,7 +48,7 @@ done
 iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
 
 updates=""
-if [ -n "$public_key" ]; then
+if [ -n "$public_key" ] && [ "${TANNIN_NO_UPDATES:-}" != "1" ]; then
   # Check once a day, and always ask before installing.
   updates="  <key>SUFeedURL</key><string>$feed</string>
   <key>SUPublicEDKey</key><string>$public_key</string>
@@ -88,7 +90,9 @@ plutil -lint "$app/Contents/Info.plist" > /dev/null
 codesign --force --sign "$identity" "$app"
 codesign --verify --deep --strict "$app"
 
-if [ -n "$public_key" ]; then
+if [ "${TANNIN_NO_UPDATES:-}" = "1" ]; then
+  echo "built $app $version (updating is off: TANNIN_NO_UPDATES=1)"
+elif [ -n "$public_key" ]; then
   echo "built $app $version (updates from $feed)"
 else
   echo "built $app $version (updating is off: no update key in scripts/bundle.sh yet)"

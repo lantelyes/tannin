@@ -22,10 +22,10 @@ struct LogsView: View {
         Group {
             if lines.isEmpty {
                 ContentUnavailableView {
-                    Label(model.logLines.isEmpty ? "Nothing Logged Yet" : "No Matching Lines", systemImage: "doc.text")
+                    Label(model.logLines.isEmpty ? "No Logs Yet" : "No Matching Lines", systemImage: "doc.text")
                 } description: {
                     Text(model.logLines.isEmpty
-                        ? "The log fills in once Steam has started with Steam Play on."
+                        ? "Logs appear after Steam starts with Steam Play on."
                         : "Try a different filter or search.")
                 }
             } else {
@@ -74,14 +74,14 @@ struct LogsView: View {
         VStack(spacing: 0) {
             Divider()
             HStack {
-                Text("^[\(count) line](inflect: true) from the Steam add-on's log")
+                Text("^[\(count) line](inflect: true) from the Steam add-on’s log")
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([model.logFile])
                 }
                 .disabled(model.logLines.isEmpty)
-                Button(didCopy ? "Copied" : "Copy Details for a Bug Report", action: copyReport)
+                Button(didCopy ? "Copied" : "Copy Bug Report", action: copyReport)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)

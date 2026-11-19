@@ -5,7 +5,7 @@ public enum SteamLauncherError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .badAppID(value): return "\"\(value)\" is not a Steam app ID."
+        case let .badAppID(value): return "“\(value)” isn’t a Steam app ID."
         }
     }
 }

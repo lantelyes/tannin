@@ -18,29 +18,29 @@ a { color: LinkText; }
 <!-- Written by scripts/make-notes.swift from CHANGELOG.md. Change the notes there, not here. -->
 <h2>New in 0.4.0</h2>
 <ul>
-  <li><strong>A second Wine version.</strong> Wine 11.17 can be installed beside 11.19 from the Engine page, with one button. Nothing changes for your games until you say so.</li>
-  <li><strong>A Wine version per game.</strong> Once a second version is installed, a game’s page has a Wine Version row. A game on "Default" follows the default engine; any other choice pins it.</li>
-  <li><strong>A way back.</strong> Before a game moves to another Wine version, Tannin keeps a copy of its Windows environment (its settings, and for some games their saves). <strong>More › Restore Windows Environment…</strong> puts it back.</li>
-  <li>The Engine page can make another installed engine the default, show it in Finder, or remove it. Removing one first moves the games that use it.</li>
+  <li>You can install Wine 11.17 alongside 11.19 from the Engine page. Your games don’t change until you switch them.</li>
+  <li>Each game can use its own Wine version. Once a second version is installed, a game’s page has a Wine Version row where you can keep the default or pick another.</li>
+  <li>Before a game switches Wine versions, Tannin backs up its Windows environment (its settings, and for some games their saves). To go back, choose More &gt; Restore Windows Environment.</li>
+  <li>On the Engine page you can make another installed version the default, show it in Finder, or remove it. Removing a version first switches the games that use it.</li>
 </ul>
 <h2>New in 0.3.0</h2>
 <ul>
-  <li>Each game can choose its graphics layer: <strong>D3DMetal</strong> (Apple’s), <strong>DXMT</strong> or <strong>DXVK</strong>. It starts on Automatic, which uses D3DMetal for 64-bit games and DXMT for 32-bit ones. The choice is on the game’s page, with the settings that belong to that layer.</li>
-  <li><strong>32-bit games that need Steam now start.</strong> Until now they quit at once.</li>
-  <li>Apple’s Game Porting Toolkit is optional. Without it games run on DXMT; games that use Direct3D 12 still need it. You can skip it in setup and add it later on the Engine page.</li>
-  <li>After updating, open <strong>Engine</strong> and press <strong>Add</strong> under "After the Update". It takes a few seconds, downloads nothing and does not change Steam.</li>
-  <li>The game’s page says which layer Automatic uses and, when the game’s log shows it, which layer the game ran on last time.</li>
+  <li>Each game can choose its graphics layer: Apple’s D3DMetal, DXMT, or DXVK. Games start on Automatic, which uses D3DMetal for 64-bit games and DXMT for 32-bit games.</li>
+  <li>Fixed 32-bit games that need Steam quitting at launch.</li>
+  <li>Apple’s Game Porting Toolkit is now optional. Without it, games run on DXMT. Direct3D 12 games still need it. You can skip it in setup and add it later on the Engine page.</li>
+  <li>After updating, open Engine and click Add under “After the Update”. It takes a few seconds and doesn’t download anything or change Steam.</li>
+  <li>A game’s page shows which layer Automatic uses and, when the game’s log says, which layer it last ran on.</li>
 </ul>
 <h2>New in 0.2.1</h2>
 <ul>
-  <li>Nothing new to use. This release exists to prove that Tannin updates itself from its real website, before anyone else is asked to rely on that.</li>
+  <li>No changes. This release tests that Tannin can update itself from its website.</li>
 </ul>
 <h2>New in 0.2.0</h2>
 <ul>
-  <li>Tannin can update itself. Choose <strong>Tannin › Check for Updates…</strong>, or let it check once a day. It always asks before installing anything.</li>
-  <li>If Tannin is not in your Applications folder, it offers to move itself there when it opens. It has to be there to update.</li>
-  <li>When a Steam update turns Steam Play off, Tannin looks for a newer Tannin straight away and tells you whether there is one.</li>
-  <li>Settings has an Updates section, and Tannin has a small website with these notes.</li>
+  <li>Tannin can update itself. Choose Tannin &gt; Check for Updates, or let it check once a day. It asks before installing.</li>
+  <li>If Tannin isn’t in your Applications folder, it offers to move itself there, because it can only update from Applications.</li>
+  <li>When a Steam update turns Steam Play off, Tannin checks for a Tannin update right away and tells you if there is one.</li>
+  <li>Settings has a new Updates section, and Tannin has a website with these notes.</li>
 </ul>
 <h2>New in 0.1.0</h2>
 <ul>

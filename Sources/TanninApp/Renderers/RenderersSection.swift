@@ -12,14 +12,14 @@ struct RenderersSection: View {
     var body: some View {
         Section {
             d3dMetal
-            included("DXMT \(LayerStore.dxmtVersion)", "Direct3D 10 and 11, in 32-bit and 64-bit games. Comes with Wine.", .dxmt)
-            included("DXVK \(LayerStore.dxvkVersion)", "Direct3D 11 through Vulkan, in 64-bit games. Comes with Wine.", .dxvk)
+            included("DXMT \(LayerStore.dxmtVersion)", "Direct3D 10 and 11, 32-bit and 64-bit games. Included with Wine.", .dxmt)
+            included("DXVK \(LayerStore.dxvkVersion)", "Direct3D 11 through Vulkan, 64-bit games only. Included with Wine.", .dxvk)
         } header: {
             Text("Renderers")
         } footer: {
             Text(model.d3dMetalIsAdded
-                ? "A game uses Automatic until you choose otherwise on its page: D3DMetal for 64-bit games, DXMT for 32-bit ones. Direct3D 9 games are drawn by Wine itself."
-                : "A game uses Automatic until you choose otherwise on its page: DXMT, and D3DMetal for 64-bit games once it is added. Direct3D 9 games are drawn by Wine itself.")
+                ? "Games use Automatic unless you choose a renderer on their page. Automatic picks D3DMetal for 64-bit games and DXMT for 32-bit games. Direct3D 9 games use WineD3D, Wine’s built-in renderer."
+                : "Games use Automatic unless you choose a renderer on their page. Automatic picks DXMT, or D3DMetal for 64-bit games once you add it. Direct3D 9 games use WineD3D, Wine’s built-in renderer.")
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .confirmationDialog("Remove D3DMetal?", isPresented: $isConfirmingRemoval) {
@@ -54,8 +54,8 @@ struct RenderersSection: View {
             Label {
                 Text(model.status?.d3dMetalVersion.map { "D3DMetal \($0)" } ?? "D3DMetal")
                 Text(model.d3dMetalIsAdded
-                    ? "Direct3D 11 and 12, in 64-bit games. Apple's, added from your disk image. \(count(.d3dMetal))"
-                    : "Direct3D 11 and 12, in 64-bit games. Apple's, free with an Apple account. Direct3D 12 games need it.")
+                    ? "Direct3D 11 and 12, 64-bit games only. From Apple’s Game Porting Toolkit. \(count(.d3dMetal))"
+                    : "Direct3D 11 and 12, 64-bit games only. Free from Apple. Direct3D 12 games need it.")
             } icon: {
                 ComponentTile(kind: .renderer, isOnThisMac: model.d3dMetalIsAdded)
             }
@@ -67,8 +67,8 @@ struct RenderersSection: View {
         let names = model.games(drawnBy: .d3dMetal).map(\.name)
         let first = names.isEmpty
             ? "No installed game uses it."
-            : "\(ListFormatter.localizedString(byJoining: names)) \(names.count == 1 ? "uses" : "use") it and will use DXMT."
-        return first + " Games that need Direct3D 12 will not start. Your disk image is not touched; Tannin's copy goes to the Trash."
+            : "\(ListFormatter.localizedString(byJoining: names)) will switch to DXMT."
+        return first + " Games that need Direct3D 12 won’t start. Tannin’s copy moves to the Trash, and your disk image isn’t changed."
     }
 
     // MARK: DXMT and DXVK

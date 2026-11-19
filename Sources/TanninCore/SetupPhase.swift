@@ -31,14 +31,14 @@ public struct SetupFailure: Sendable, Equatable {
         switch error {
         case DownloadError.allSourcesFailed:
             // The partial file stays, so the amount that arrived is still true.
-            message = "The download stopped. Check your connection."
+            message = "The download stopped. Check your internet connection."
         case DownloadError.wrongSize, DownloadError.wrongHash:
             progress.download = nil
-            message = "The download did not arrive whole, so it was removed."
+            message = "The download was incomplete, so Tannin deleted it. Try again."
         default:
             progress.download = nil
             message = progress.step == .rosetta
-                ? "macOS could not install Rosetta. Check your connection."
+                ? "macOS couldn’t install Rosetta. Check your internet connection."
                 : String(describing: error)
         }
         self.progress = progress

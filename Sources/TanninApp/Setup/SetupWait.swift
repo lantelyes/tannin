@@ -62,10 +62,10 @@ struct SetupWait: View {
             switch work.stage {
             case .rosetta: "Installing Rosetta…"
             case .engineDownload: "Downloading Wine \(Pins.engineWine)"
-            case .engineUnpack: "Checking Wine \(Pins.engineWine) and unpacking it…"
+            case .engineUnpack: "Verifying and unpacking Wine \(Pins.engineWine)…"
             case .bridgePrepare: "Preparing the Steam bridge…"
             case .bridgeDownload: "Downloading the Steam bridge"
-            case .bridgeBuild: "Putting the Steam bridge together…"
+            case .bridgeBuild: "Building the Steam bridge…"
             }
         }
     }

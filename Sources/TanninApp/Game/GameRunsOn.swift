@@ -27,7 +27,7 @@ struct GameRunsOn: View {
                     Button("Install") { Task { await model.fetchEngine(spec, for: game.appID) } }
                     Button("Cancel", role: .cancel) {}
                 } message: { spec in
-                    Text("\(spec.downloadSize) to download. Steam stays open while it downloads. When it is here, Tannin asks before it moves \(game.name) to it.")
+                    Text("A \(spec.downloadSize) download. Steam can stay open. When it’s done, Tannin asks before switching \(game.name) to it.")
                 }
             rendererRow
                 .onChange(of: d3dMetalIsAdded) { _, added in
@@ -71,7 +71,7 @@ struct GameRunsOn: View {
                 Text("Default (\(defaultEngine.wine))")
             } label: {
                 Text("Wine Version")
-                Text("Can be chosen once the game is installed.")
+                Text("Available after the game is installed.")
             }
         } else if let download {
             LabeledContent {
@@ -100,7 +100,7 @@ struct GameRunsOn: View {
             } label: {
                 Label {
                     Text("Wine Version")
-                    Text("\(pin.title) is not installed. This game uses \(engine.runsOn.wine) until it is.")
+                    Text("\(pin.title) isn’t installed. This game uses \(engine.runsOn.title) until it is.")
                 } icon: {
                     StatusSymbol.warning.image
                 }
@@ -171,7 +171,7 @@ struct GameRunsOn: View {
             } label: {
                 Label {
                     Text("Renderer")
-                    Text("D3DMetal is not on this Mac, so this game uses DXMT. Add it, or choose another renderer.")
+                    Text("D3DMetal isn’t installed, so this game uses DXMT. Add D3DMetal or choose another renderer.")
                 } icon: {
                     StatusSymbol.warning.image
                 }
@@ -198,9 +198,9 @@ struct GameRunsOn: View {
                     option(.d3dMetal, detail: "64-bit games only")
                         .selectionDisabled()
                 } else if d3dMetalIsMissing {
-                    option(.d3dMetal, detail: "Apple's. Not on this Mac yet")
+                    option(.d3dMetal, detail: "From Apple. Not added yet")
                 } else {
-                    PopUpEntry("D3DMetal", detail: "Apple's. Not on this Mac yet")
+                    PopUpEntry("D3DMetal", detail: "From Apple. Not added yet")
                         .badge(Text("Add…"))
                         .tag(RendererChoice.addD3DMetal)
                 }
@@ -241,21 +241,21 @@ struct GameRunsOn: View {
     private var automaticDetail: String {
         switch GraphicsLayer.automaticChoice(is32Bit: is32Bit, toolkitAdded: d3dMetalIsAdded) {
         case let renderer?: "\(renderer.title) for this game"
-        case nil: "Tannin picks when the game is installed"
+        case nil: "Chosen once the game is installed"
         }
     }
 
     /// Under the row: what Automatic uses for this game, and what the game ran on last time when its log says.
     private var caption: String? {
         let ran = game.isInstalled ? model.layerUsage[game.appID] : nil
-        let ranSentence = ran.map { "It ran on \($0.title) last time." }
+        let ranSentence = ran.map { "Last ran on \($0.title)." }
         guard draft.layer == .automatic else { return ranSentence }
         if ran == .wineOwn {
-            return "It ran on Wine's own drawing last time, which is what Direct3D 9 games get."
+            return "Last ran on WineD3D, which Direct3D 9 games use."
         }
         let pick: String
         switch (d3dMetalIsAdded, is32Bit) {
-        case (true, nil): pick = "Tannin picks when the game is installed."
+        case (true, nil): pick = "Chosen automatically once the game is installed."
         case (true, false?): pick = "D3DMetal for this 64-bit game."
         case (_, true?): pick = "DXMT for this 32-bit game."
         case (false, false?): pick = "DXMT for this 64-bit game. Direct3D 12 games need D3DMetal."

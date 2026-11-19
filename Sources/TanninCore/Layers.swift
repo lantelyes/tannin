@@ -71,9 +71,9 @@ public enum LayerError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .engineMissing: return "The Wine engine is not installed, so there are no renderers to prepare."
-        case let .missingFile(path): return "The Wine engine is missing \(path)."
-        case let .unexpectedHeader(path): return "\(path) does not look like the file this engine ships. Nothing was changed."
+        case .engineMissing: return "Wine isn’t installed, so there are no renderers to prepare."
+        case let .missingFile(path): return "Wine is missing \(path)."
+        case let .unexpectedHeader(path): return "\(path) isn’t the file this Wine version ships, so Tannin left it unchanged."
         }
     }
 }

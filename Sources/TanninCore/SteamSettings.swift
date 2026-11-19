@@ -40,10 +40,10 @@ public enum SteamConfigError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .steamRunning: return "Quit Steam first: it rewrites its settings when it exits and would undo this change."
+        case .steamRunning: return "Quit Steam first. It overwrites its settings when it quits, which would undo this change."
         case let .unsafeRoundTrip(file):
-            return "\(file) does not survive being read and written back unchanged, so Tannin left it alone."
-        case .noUser: return "No Steam user folder was found. Sign in to Steam once first."
+            return "Tannin couldn’t safely edit \(file), so it left the file unchanged."
+        case .noUser: return "Tannin couldn’t find a Steam user folder. Sign in to Steam first."
         }
     }
 }

@@ -11,8 +11,8 @@ struct SetupNoticeSection: View {
                     .buttonStyle(.borderedProminent)
             } label: {
                 Label {
-                    Text("Setup isn't finished")
-                    Text("Some of what Tannin needs is not on this Mac yet.")
+                    Text("Setup isn’t finished")
+                    Text("Tannin still needs to download a few things.")
                 } icon: {
                     StatusSymbol.pending.image
                 }

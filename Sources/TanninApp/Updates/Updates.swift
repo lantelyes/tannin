@@ -85,11 +85,11 @@ final class Updates: NSObject {
     /// Why a check failed, in a short sentence.
     private static func reason(for error: NSError) -> String {
         if error.domain == SUSparkleErrorDomain, error.code == Int(SUError.runningTranslocated.rawValue) {
-            return "Tannin has to be in the Applications folder first."
+            return "Move Tannin to the Applications folder to get updates."
         }
         let offline = [NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed]
         if let cause = error.userInfo[NSUnderlyingErrorKey] as? NSError, cause.domain == NSURLErrorDomain, offline.contains(cause.code) {
-            return "This Mac appears to be offline."
+            return "Your Mac appears to be offline."
         }
         return error.localizedDescription
     }

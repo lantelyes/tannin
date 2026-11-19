@@ -7,10 +7,10 @@ public enum KitError: Error, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .payloadMissing(path): return "The NotProton release does not contain \(path)."
+        case let .payloadMissing(path): return "The NotProton release doesn’t contain \(path)."
         case let .valveFileMismatch(name, expected, actual):
-            return "Valve file \(name) does not match its pinned SHA-256 (expected \(expected), got \(actual))."
-        case .notUnpacked: return "The Steam Play kit is not installed. Run: tannin kit install"
+            return "Valve file \(name) doesn’t match its pinned SHA-256 (expected \(expected), got \(actual))."
+        case .notUnpacked: return "The Steam Play kit isn't installed. Run: tannin kit install"
         }
     }
 }

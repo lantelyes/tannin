@@ -43,7 +43,7 @@ struct SidebarStatus: View {
     }
 
     private var title: String {
-        guard model.status != nil else { return "Checking this Mac…" }
+        guard model.status != nil else { return "Checking Steam…" }
         return model.problem?.title ?? "Steam Play is on"
     }
 

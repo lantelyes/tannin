@@ -17,7 +17,7 @@ struct RenderersView: View {
                 }
                 .formStyle(.grouped)
             } else {
-                ProgressView("Checking this Mac…")
+                ProgressView("Checking Steam…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

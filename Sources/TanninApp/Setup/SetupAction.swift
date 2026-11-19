@@ -20,10 +20,10 @@ struct SetupAction: View {
             case .checking:
                 ProgressView()
                     .controlSize(.small)
-                    .accessibilityLabel("Checking this Mac")
+                    .accessibilityLabel("Checking Steam")
 
             case .steamMissing:
-                SetupNotice(title: "Steam is not in your Applications folder", detail: "Install Steam and sign in, then come back.") {
+                SetupNotice(title: "Steam isn’t in your Applications folder", detail: "Install Steam and sign in, then return to Tannin.") {
                     Button("Get Steam") { openURL(Self.steamPage) }
                 }
 
@@ -55,14 +55,14 @@ struct SetupAction: View {
                 SteamPlayCard(isAddingSteamPlay: $isAddingSteamPlay)
 
             case .foreignTool:
-                SetupNotice(title: "Another tool is loaded into Steam", detail: "Tannin will not replace it. Remove the other tool first, then come back.")
+                SetupNotice(title: "Another tool has modified Steam", detail: "Tannin won’t replace it. Remove the other tool, then try again.")
 
             case .addingSteamPlay:
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Adding Steam Play…").fontWeight(.semibold)
-                        Text("Steam is quitting. It opens again by itself.")
+                        Text("Steam is quitting and will reopen automatically.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -70,14 +70,14 @@ struct SetupAction: View {
                 .accessibilityElement(children: .combine)
 
             case .steamPlayRefused:
-                SetupNotice(title: "macOS did not let Tannin change Steam",
-                            detail: "Allow Tannin under Privacy & Security, App Management, then add Steam Play again.") {
-                    Button("Open Settings") { openURL(Self.appManagement) }
+                SetupNotice(title: "macOS blocked Tannin from changing Steam",
+                            detail: "Turn on Tannin in Privacy & Security > App Management, then add Steam Play again.") {
+                    Button("Open System Settings") { openURL(Self.appManagement) }
                 }
                 SteamPlayCard(isAddingSteamPlay: $isAddingSteamPlay)
 
             case let .steamPlayFailed(message):
-                SetupNotice(title: "Steam Play was not added", detail: message)
+                SetupNotice(title: "Tannin couldn’t add Steam Play", detail: message)
                 SteamPlayCard(isAddingSteamPlay: $isAddingSteamPlay)
 
             case .done:
@@ -99,11 +99,11 @@ struct SetupAction: View {
 
     private func startCaption(needsRosetta: Bool, bytesLeft: Int64, isContinuing: Bool) -> String {
         if needsRosetta {
-            "Also installs Rosetta, Apple's translator for the Windows side of a game. Setting up accepts Apple's licence for it."
+            "Setup also installs Rosetta, Apple’s translator for Intel code. By continuing, you accept Apple’s license for Rosetta."
         } else if isContinuing {
-            "The Wine engine is already on this Mac. \(bytesLeft.megabytes) is left to download."
+            "Wine is already installed. \(bytesLeft.megabytes) left to download."
         } else {
-            "Rosetta and Steam are already on this Mac."
+            "Rosetta and Steam are already installed."
         }
     }
 

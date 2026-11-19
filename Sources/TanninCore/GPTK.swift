@@ -9,11 +9,11 @@ public enum GPTKError: Error, CustomStringConvertible {
     public var description: String {
         switch self {
         case .notAToolkit:
-            return "That disk image has no D3DMetal in it. It should be Apple's Game Porting Toolkit."
+            return "This disk image doesn’t contain D3DMetal. Choose Apple’s Game Porting Toolkit."
         case .notApple:
-            return "Apple's signature on this copy did not check out. Nothing was changed."
-        case .notImported: return "D3DMetal has not been added. Run: tannin d3dmetal add <disk image>"
-        case .runnerMissing: return "The runner has not been built. Run: tannin runner build"
+            return "This copy of D3DMetal isn’t signed by Apple, so Tannin didn’t install it."
+        case .notImported: return "D3DMetal hasn't been added. Run: tannin d3dmetal add <disk image>"
+        case .runnerMissing: return "The runner hasn't been built. Run: tannin runner build"
         }
     }
 }

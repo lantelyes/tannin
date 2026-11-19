@@ -61,7 +61,7 @@ struct SetupDetails: View {
         switch step {
         case .rosetta: "Rosetta"
         case .steam: "Steam"
-        case .engine: "Wine engine"
+        case .engine: "Wine"
         case .bridge: "Steam bridge"
         case .steamPlay: "Steam Play"
         }
@@ -74,28 +74,28 @@ struct SetupDetails: View {
             case .rosetta: "Installing"
             case .engineDownload, .bridgeDownload, .bridgePrepare: "Downloading"
             case .engineUnpack: "Unpacking"
-            case .bridgeBuild: "Putting together"
+            case .bridgeBuild: "Building"
             }
         }
         switch step {
         case .rosetta:
             return isDone(step) ? "Installed" : "Not installed"
         case .steam:
-            guard isDone(step) else { return "Not found" }
+            guard isDone(step) else { return "Not installed" }
             return "In Applications" + (model.status?.steamBuild.map { ", build \($0)" } ?? "")
         case .engine:
-            return isDone(step) ? "Wine \(Pins.engineWine)" : toDownload(step)
+            return isDone(step) ? "Version \(Pins.engineWine)" : toDownload(step)
         case .bridge:
-            if isDone(step) { return "In place" }
+            if isDone(step) { return "Installed" }
             // While the engine is on its way the bridge is simply next.
-            return stage(.engine) != nil ? "After the engine" : toDownload(step)
+            return stage(.engine) != nil ? "Waiting for Wine" : toDownload(step)
         case .steamPlay:
             if isDone(step) { return "On" }
             switch phase {
-            case .foreignTool: return "Another tool is loaded into Steam"
+            case .foreignTool: return "Another tool has modified Steam"
             case .readyForSteamPlay, .steamPlayRefused, .steamPlayFailed: return "Ready to add"
             case .addingSteamPlay: return "Adding"
-            default: return "Asks you first"
+            default: return "Asks first"
             }
         }
     }

@@ -128,7 +128,7 @@ if [ -n "$dry" ]; then
   changelog="build/release-dry-run/CHANGELOG.md"
 fi
 
-swift scripts/make-notes.swift stamp "$version" "$(LC_ALL=C date '+%-d %B %Y')" --changelog "$changelog" > /dev/null
+swift scripts/make-notes.swift stamp "$version" "$(LC_ALL=C date '+%B %-d, %Y')" --changelog "$changelog" > /dev/null
 swift scripts/make-notes.swift site --changelog "$changelog" --docs "$docs" > /dev/null
 swift scripts/make-notes.swift text "$version" --changelog "$changelog" > build/release-notes.md
 

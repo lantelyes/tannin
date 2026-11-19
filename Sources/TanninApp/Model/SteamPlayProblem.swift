@@ -23,10 +23,10 @@ enum SteamPlayProblem: Equatable {
     /// The short line shown under the sidebar and in the menu bar.
     var title: String {
         switch self {
-        case .steamMissing: "Steam isn't installed"
-        case .setupIncomplete: "Setup isn't finished"
+        case .steamMissing: "Steam isn’t installed"
+        case .setupIncomplete: "Setup isn’t finished"
         case .off, .steamUpdated: "Steam Play is off"
-        case .otherTool: "Another tool is in Steam"
+        case .otherTool: "Another tool has modified Steam"
         }
     }
 
@@ -35,7 +35,7 @@ enum SteamPlayProblem: Equatable {
         case .steamMissing: "Install Steam, then open Tannin again"
         case .setupIncomplete: "Open Steam Play to continue"
         case .off: "Add it in Steam Play"
-        case .steamUpdated: "Steam updated itself"
+        case .steamUpdated: "Steam was updated"
         case .otherTool: "Remove the other tool first"
         }
     }
@@ -43,11 +43,11 @@ enum SteamPlayProblem: Equatable {
     /// The sentence shown on a game's page.
     var explanation: String {
         switch self {
-        case .steamMissing: "Steam isn't in the Applications folder."
-        case .setupIncomplete: "Tannin's setup isn't finished."
-        case .off: "Steam Play hasn't been added to Steam."
-        case .otherTool: "Another tool is loaded into Steam. Tannin will not replace it."
-        case .steamUpdated: "Steam updated itself, so Steam Play is off until Tannin supports the new build."
+        case .steamMissing: "Steam isn’t in the Applications folder."
+        case .setupIncomplete: "Setup isn’t finished."
+        case .off: "Steam Play hasn’t been added to Steam."
+        case .otherTool: "Another tool has modified Steam. Tannin won’t replace it."
+        case .steamUpdated: "Steam updated to a build Tannin doesn’t support yet, so Steam Play is off."
         }
     }
 

@@ -68,12 +68,12 @@ struct GamePage: View {
             draft = SettingsDraft(game.settings)
         }
         .confirmationDialog(moveTitle, isPresented: $isConfirmingMove, presenting: pendingMove) { move in
-            Button(model.status?.steamRunning == true ? "Quit Steam and Move" : "Move") {
+            Button(model.status?.steamRunning == true ? "Quit Steam and Switch" : "Switch") {
                 Task { await model.moveGame(game.appID, to: move.spec) }
             }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("Steam quits and reopens. Tannin first keeps a copy of this game's Windows environment, which holds its settings and may hold its saves, so you can put it back.")
+            Text("Steam will quit and reopen. Tannin first backs up this game’s Windows environment (its settings, and sometimes its saves) so you can restore it.")
         }
         .confirmationDialog(restoreTitle, isPresented: $isConfirmingRestore) {
             Button(model.status?.steamRunning == true ? "Quit Steam and Restore" : "Restore") {
@@ -87,7 +87,7 @@ struct GamePage: View {
             Button("Quit Steam and Save") { save() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Steam rewrites its settings when it quits, so it has to be closed first. Tannin reopens it afterwards.")
+            Text("Steam has to be closed to save these settings. Tannin will reopen it.")
         }
         .confirmationDialog("Remove Steam Play from Steam?", isPresented: $isConfirmingRemoval) {
             Button("Remove Steam Play", role: .destructive) {
@@ -139,20 +139,20 @@ struct GamePage: View {
 
     @ViewBuilder private var notices: some View {
         if let arrivedEngine {
-            NoticeRow(symbol: .info, text: "\(arrivedEngine.title) is here. Move this game to it?") {
+            NoticeRow(symbol: .info, text: "\(arrivedEngine.title) is installed. Switch this game to it?") {
                 Button("Not Now") { model.forgetWantedEngine(for: game.appID) }
-                Button("Move…") { requestMove(to: arrivedEngine) }
+                Button("Switch…") { requestMove(to: arrivedEngine) }
                     .disabled(model.isBusy)
             }
         }
         if model.recentlyMoved.contains(game.appID), let engine = model.gameEngines[game.appID], model.environmentCopies[game.appID] != nil {
-            NoticeRow(symbol: .info, text: "This game moved to \(engine.runsOn.title). A copy of its Windows environment from before is kept.") {
+            NoticeRow(symbol: .info, text: "This game now uses \(engine.runsOn.title). Tannin kept a backup of its Windows environment.") {
                 Button("Restore…") { isConfirmingRestore = true }
                     .disabled(model.isBusy)
             }
         }
         if game.isInstalled, hasEnvironment, !isRunning, savedWindow == nil, model.refusedScreenSize.contains(game.appID) {
-            NoticeRow(symbol: .warning, text: "This game asked for a screen size this Mac does not have, and stopped. A fixed window usually gets it going.") {
+            NoticeRow(symbol: .warning, text: "This game quit because it needs a screen resolution your Mac doesn’t have. Running it in a fixed window usually helps.") {
                 Button("Use \(FixedWindow.Size.usual.description)") {
                     Task { await model.useFixedWindow(.usual, appID: game.appID) }
                 }
@@ -160,7 +160,7 @@ struct GamePage: View {
             }
         }
         if game.isInstalled, !isRunning, !model.d3dMetalIsAdded, model.neededDirect3D12.contains(game.appID) {
-            NoticeRow(symbol: .warning, text: "This game asked for Direct3D 12 and stopped. Only the D3DMetal renderer has it.") {
+            NoticeRow(symbol: .warning, text: "This game needs Direct3D 12, which only D3DMetal supports.") {
                 Button("Add D3DMetal…") { model.showD3DMetalSheet() }
                     .disabled(model.isBusy)
             }
@@ -203,7 +203,7 @@ struct GamePage: View {
                 Text("Advanced")
             } footer: {
                 if !game.isInstalled {
-                    Text("Settings you choose now are used once the game is installed.")
+                    Text("These settings apply once the game is installed.")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -232,9 +232,9 @@ struct GamePage: View {
     }
 
     private var fixedWindowCaption: String {
-        if !hasEnvironment { return "Available once the game has been started for the first time." }
+        if !hasEnvironment { return "Available after you’ve played the game once." }
         if isRunning { return "Quit the game to change this." }
-        return "For old games that need a screen shape this Mac does not have. The game runs in a window of this size."
+        return "Runs the game in a window of this size. For older games that need a 4:3 display."
     }
 
     /// The sizes whose window fits this Mac's screen, and whichever one is set already.
@@ -249,17 +249,17 @@ struct GamePage: View {
 
     private var moveTitle: String {
         let target = pendingMove?.spec?.title ?? "the default, Wine \(defaultWine)"
-        return "Move \(game.name) to \(target)?"
+        return "Switch \(game.name) to \(target)?"
     }
 
     private var restoreTitle: String {
-        guard let copy = model.environmentCopies[game.appID] else { return "Put back the copy?" }
-        return "Put back the copy from \(copy.made.formatted(.dateTime.day().month(.wide).hour().minute()))?"
+        guard let copy = model.environmentCopies[game.appID] else { return "Restore the backup?" }
+        return "Restore the backup from \(copy.made.formatted(.dateTime.day().month(.wide).hour().minute()))?"
     }
 
     private var restoreMessage: String {
         guard let copy = model.environmentCopies[game.appID] else { return "" }
-        return "It was made before this game moved from Wine \(copy.fromWine) to \(copy.toWine). Anything the game has saved in its Windows environment since then is replaced. Saves in Steam Cloud are not affected. Steam quits and reopens."
+        return "It was made before this game switched from Wine \(copy.fromWine) to \(copy.toWine). Anything the game has saved in its Windows environment since then will be lost. Steam Cloud saves aren’t affected. Steam will quit and reopen."
     }
 
     private var launchOptionsPreview: String {
@@ -278,13 +278,13 @@ struct GamePage: View {
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.glassProminent)
                     .disabled(!model.canPlay(game))
-                    .help(model.canPlay(game) ? "Ask Steam to start this game" : "This game can't be started right now")
+                    .help(model.canPlay(game) ? "Start this game in Steam" : "This game can’t be started right now")
             } else {
                 Button("Install in Steam", systemImage: "arrow.down.circle") { model.install(game) }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.glassProminent)
                     .disabled(model.problem != nil)
-                    .help("Open Steam's install window for this game")
+                    .help("Open Steam’s install window for this game")
             }
         }
         ToolbarItem(placement: .primaryAction) {

@@ -35,7 +35,7 @@ struct RootView: View {
         .sheet(isPresented: $model.isShowingD3DMetalSheet) {
             AddD3DMetalSheet()
         }
-        .alert("That didn't work", isPresented: $model.isShowingErrorInMain) {
+        .alert(model.errorTitle, isPresented: $model.isShowingErrorInMain) {
             Button("OK") {}
         } message: {
             Text(model.errorMessage ?? "")
@@ -63,7 +63,7 @@ struct RootView: View {
             LogsView()
         case nil:
             if model.status == nil {
-                ProgressView("Checking this Mac…")
+                ProgressView("Checking Steam…")
             } else {
                 NoGamesView()
             }
