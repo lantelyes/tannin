@@ -15,7 +15,7 @@ struct SteamPlayCard: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Add Steam Play to Steam").fontWeight(.semibold)
-                Text("Steam will quit and reopen, and macOS will ask for permission.")
+                Text("Steam quits and reopens. macOS asks for permission.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

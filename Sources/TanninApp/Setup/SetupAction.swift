@@ -71,7 +71,7 @@ struct SetupAction: View {
 
             case .steamPlayRefused:
                 SetupNotice(title: "macOS blocked Tannin from changing Steam",
-                            detail: "In System Settings, go to Privacy & Security > App Management and turn on Tannin. Then add Steam Play again.") {
+                            detail: "Turn on Tannin in Privacy & Security > App Management, then add Steam Play again.") {
                     Button("Open System Settings") { openURL(Self.appManagement) }
                 }
                 SteamPlayCard(isAddingSteamPlay: $isAddingSteamPlay)

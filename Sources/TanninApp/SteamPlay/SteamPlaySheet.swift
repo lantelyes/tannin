@@ -14,9 +14,9 @@ struct SteamPlaySheet: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 point("arrow.clockwise", "Steam quits and reopens",
-                      "Tannin adds one file to Steam and re-signs the app on your Mac.")
+                      "Tannin adds one file to Steam and re-signs the app.")
                 point("lock.shield", "macOS asks for permission",
-                      "Allow Tannin to modify other apps. Afterward, macOS asks you to approve Steam’s controller and keyboard access again.")
+                      "Allow Tannin to modify other apps. Then approve Steam’s controller and keyboard access again.")
                 point("arrow.uturn.backward", "You can undo this",
                       "Removing Steam Play restores Valve’s original Steam. Your games, saves, and account aren’t affected.")
             }

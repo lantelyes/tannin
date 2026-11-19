@@ -39,7 +39,7 @@ struct AddD3DMetalSheet: View {
             }
 
             VStack(spacing: 0) {
-                step(1, "Download the Game Porting Toolkit", "Get the latest disk image from Apple’s developer downloads.") {
+                step(1, "Download the toolkit", "Get the latest disk image from Apple.") {
                     Button("Open Apple’s Page", systemImage: "arrow.up.right") { openURL(Self.applePage) }
                         .labelStyle(.titleAndIcon)
                 }

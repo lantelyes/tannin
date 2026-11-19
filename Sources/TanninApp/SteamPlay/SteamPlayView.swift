@@ -104,7 +104,7 @@ struct SteamPlayView: View {
         case .on:
             switch status.addonLoaded {
             case true?: return "Loaded when Steam last started." + build
-            case false?: return "Steam updated to a build Tannin doesn’t support yet, so Steam Play is off." + build
+            case false?: return "Steam updated to a build Tannin doesn’t support yet." + build
             case nil: return "Takes effect the next time Steam starts." + build
             }
         }

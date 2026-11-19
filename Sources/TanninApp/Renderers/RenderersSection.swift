@@ -55,7 +55,7 @@ struct RenderersSection: View {
                 Text(model.status?.d3dMetalVersion.map { "D3DMetal \($0)" } ?? "D3DMetal")
                 Text(model.d3dMetalIsAdded
                     ? "Direct3D 11 and 12, 64-bit games only. From Apple’s Game Porting Toolkit. \(count(.d3dMetal))"
-                    : "Direct3D 11 and 12, 64-bit games only. A free download from Apple, required for Direct3D 12 games.")
+                    : "Direct3D 11 and 12, 64-bit games only. Free from Apple. Direct3D 12 games need it.")
             } icon: {
                 ComponentTile(kind: .renderer, isOnThisMac: model.d3dMetalIsAdded)
             }
